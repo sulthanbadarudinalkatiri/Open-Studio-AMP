@@ -1,0 +1,25 @@
+# --- Web App & 3D Molecular Visualization ---
+streamlit==1.61.1
+stmol==0.0.9
+py3Dmol==2.5.5
+
+# --- Bioinformatics & Scientific Computing ---
+biopython==1.88
+pandas==2.2.0
+numpy==1.26.4
+scipy==1.17.1
+
+# --- Data Visualization & Charts ---
+plotly==6.9.0
+matplotlib==3.11.1
+seaborn==0.13.2
+
+# --- Data Ingestion & API Downloader ---
+requests==2.31.0
+beautifulsoup4==4.15.0
+
+# --- Official R&D Report Generator (PDF) ---
+fpdf2==2.8.8
+
+# --- Automated Scientific Testing (Pytest) ---
+pytest==9.0.3

@@ -1,0 +1,78 @@
+# ==============================================================================
+# Python & Runtime
+# ==============================================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# ==============================================================================
+# Virtual Environment
+# ==============================================================================
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# ==============================================================================
+# Environment Variables & Secrets (NEVER commit these)
+# ==============================================================================
+.env
+.env.local
+.env.production
+*.key
+*.pem
+secrets.toml
+
+# ==============================================================================
+# Data Files (some are too large for GitHub or contain raw genome data)
+# ==============================================================================
+# Large processed outputs — regenerate via: python engine.py --mode all
+data/processed/*.csv
+data/processed/*.json
+
+# Raw genome downloads — fetched automatically from NCBI on first run
+data/raw/*.fna
+data/raw/*.faa
+data/raw/*.fasta
+
+# PDF test outputs
+data/*.pdf
+
+# ==============================================================================
+# Testing & Cache
+# ==============================================================================
+.pytest_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# ==============================================================================
+# IDE & OS
+# ==============================================================================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================================================================
+# Streamlit
+# ==============================================================================
+# Streamlit secrets — if you add API keys to .streamlit/secrets.toml, keep it local
+.streamlit/secrets.toml
+
+# ==============================================================================
+# Misc
+# ==============================================================================
+CODEBASE_SUMMARY.txt
+*.log
