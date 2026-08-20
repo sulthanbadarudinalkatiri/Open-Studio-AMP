@@ -33,6 +33,7 @@ secrets.toml
 # Large processed outputs — regenerate via: python engine.py --mode all
 data/processed/*.csv
 data/processed/*.json
+data/processed/*.parquet
 
 # Raw genome downloads — fetched automatically from NCBI on first run
 data/raw/*.fna

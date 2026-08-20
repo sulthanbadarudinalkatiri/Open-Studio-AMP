@@ -506,7 +506,7 @@ def generate_preservation_narrative(candidate: Union[Dict[str, Any], Any], lang:
         )
 
         boman_desc = (
-            f"Indeks Boman sebesar {boman:.2f} kcal/mol dan rasio hidrofobik {hydro:.1f}% diperkirakan berada dalam rentang ideal untuk insersi pori membran bakteri dengan risiko hemolisis sel inang yang minimal."
+            f"Indeks Boman sebesar {boman:.2f} kcal/mol dan rasio hidrofobik {hydro:.1f}% diperkirakan berada dalam rentang ideal untuk insersi pori membran bakteri dengan potensi sitotoksisitas membran yang rendah (berdasarkan proksi heuristik)."
             if (0.0 <= boman <= 2.5 and 25.0 <= hydro <= 60.0)
             else f"Indeks Boman ({boman:.2f} kcal/mol) menunjukkan karakteristik interaksi protein khusus."
         )
@@ -542,7 +542,7 @@ def generate_preservation_narrative(candidate: Union[Dict[str, Any], Any], lang:
         )
 
         boman_desc = (
-            f"A Boman Index of {boman:.2f} kcal/mol alongside {hydro:.1f}% hydrophobicity is predicted to be well-balanced for bacterial membrane disruption with potential for negligible hemolytic toxicity."
+            f"A Boman Index of {boman:.2f} kcal/mol alongside {hydro:.1f}% hydrophobicity is predicted to be well-balanced for bacterial membrane disruption with predicted low membrane cytotoxicity (heuristic proxy)."
             if (0.0 <= boman <= 2.5 and 25.0 <= hydro <= 60.0)
             else f"The Boman Index ({boman:.2f} kcal/mol) indicates distinctive interaction kinetics."
         )

@@ -60,32 +60,29 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # 2. DATA INGESTION & CACHING
 # ==============================================================================
 
-@st.cache_data(show_spinner=I18N["id"]["spinner_db"])
-def load_screening_data(csv_path: str = "data/processed/pls47_candidates.csv") -> pd.DataFrame:
-    """Loads pre-calculated screening database. If missing, automatically runs the orchestrator pipeline."""
-    target = Path(csv_path)
-    if not target.exists() or target.stat().st_size < 1000:
-        with st.spinner(I18N["id"]["spinner_db"]):
+@st.cache_data(show_spinner=False)
+def load_screening_data() -> pd.DataFrame:
+    target = Path("data/processed/pls47_candidates.parquet")
+    
+    # If the user is running the app for the first time and hasn't run the backend
+    if not target.exists():
+        with st.spinner("Initializing bio-screening pipeline... (First run only)"):
+            from engine import run_pipeline
             df_all, _ = run_pipeline(
                 bioproject="PRJDB8096",
                 prefix="pls47",
                 mode="all",
                 preset="tropical",
-                output_csv=csv_path
+                output_parquet=str(target)
             )
             return df_all
 
-    df = pd.read_csv(target)
+    df = pd.read_parquet(target, engine="pyarrow")
     
-    # Backward compatibility for old CSV schemas
+    # Backward compatibility for old schemas
     if "extremopreserve_score" in df.columns:
         df = df.rename(columns={"extremopreserve_score": "as35_score"})
 
-    if "failed_reasons" in df.columns and len(df) > 0 and isinstance(df["failed_reasons"].iloc[0], str):
-        import ast
-        df["failed_reasons"] = df["failed_reasons"].apply(
-            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.startswith("[") else []
-        )
     return df
 
 
@@ -353,12 +350,17 @@ def main():
             cid = row.get("id", "Unknown")
             return f"[{score:.1f} | AI:{ai:.0f} | Q:{charge:+.1f}] {cid}"
 
+        candidate_indices = list(range(len(search_filtered_df)))
         display_options = [build_smart_label(row) for _, row in search_filtered_df.iterrows()]
-        label_to_id = {display_options[i]: search_filtered_df.iloc[i]["id"] for i in range(len(display_options))}
 
-        selected_label = st.sidebar.selectbox(t["select_cand"], display_options, index=0)
-        selected_cand_id = label_to_id[selected_label]
-        selected_candidate = search_filtered_df[search_filtered_df["id"] == selected_cand_id].iloc[0]
+        selected_idx = st.sidebar.selectbox(
+            t["select_cand"],
+            options=candidate_indices,
+            format_func=lambda i: display_options[i],
+            index=0
+        )
+        selected_candidate = search_filtered_df.iloc[selected_idx]
+        selected_cand_id = selected_candidate["id"]
     else:
         if search_query:
             st.sidebar.warning(t["search_no_match"])

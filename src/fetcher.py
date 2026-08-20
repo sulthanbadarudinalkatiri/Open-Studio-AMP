@@ -107,10 +107,7 @@ class GenomeFetcher:
                             break
                         decompressed_bytes += len(chunk)
                         if decompressed_bytes > self.max_decompressed_bytes:
-                            raise ValueError(
-                                f"Decompressed size exceeded safety limit of "
-                                f"{self.max_decompressed_bytes / (1024*1024):.1f} MB (possible decompression bomb)."
-                            )
+                            raise ValueError(f"Decompressed size exceeded safety limit of {self.max_decompressed_bytes / (1024*1024):.1f} MB (possible decompression bomb).")
                         f_out.write(chunk)
         except Exception:
             if target_path.exists():
@@ -158,11 +155,7 @@ class GenomeFetcher:
         if expected_sha256:
             if final_sha256.lower() != expected_sha256.lower():
                 target_path.unlink()
-                raise ValueError(
-                    f"SHA256 checksum mismatch for {target_path.name}!\n"
-                    f"Expected: {expected_sha256}\n"
-                    f"Observed: {final_sha256}"
-                )
+                raise ValueError(f"SHA256 checksum mismatch for {target_path.name}!\nExpected: {expected_sha256}\nObserved: {final_sha256}")
             logger.info(f"  [VERIFIED] Checksum matched expected SHA256 digest.")
 
     def fetch_from_ncbi(

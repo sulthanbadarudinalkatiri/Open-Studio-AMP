@@ -167,7 +167,7 @@ def run_pipeline(
     mode: str = "all",
     preset: str = "tropical",
     raw_dir: str = "data/raw",
-    output_csv: str = "data/processed/pls47_candidates.csv",
+    output_parquet: str = "data/processed/pls47_candidates.parquet",
     output_report: str = "data/processed/case_study_report.md"
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -260,11 +260,11 @@ def run_pipeline(
     logger.info(f"\n[STEP 4/4] Generating R&D Artifacts & Comparative Case Study...")
     nisin_res = evaluate_peptide("Nisin_A_Baseline", NISIN_A_SEQUENCE, config=config)
 
-    # Save CSV
-    csv_path = Path(output_csv)
-    csv_path.parent.mkdir(parents=True, exist_ok=True)
-    df_all.to_csv(csv_path, index=False)
-    logger.info(f"  [SAVED] Structured CSV Database: {csv_path} ({csv_path.stat().st_size / 1024 / 1024:.2f} MB)")
+    # Save Parquet
+    parquet_path = Path(output_parquet)
+    parquet_path.parent.mkdir(parents=True, exist_ok=True)
+    df_all.to_parquet(parquet_path, index=False, engine="pyarrow")
+    logger.info(f"  [SAVED] Structured Parquet Database: {parquet_path} ({parquet_path.stat().st_size / 1024 / 1024:.2f} MB)")
 
     # Save Case Study Report MD
     report_path = Path(output_report)
@@ -336,10 +336,10 @@ def main():
         help="Directory containing or receiving raw genome files (default: data/raw)"
     )
     parser.add_argument(
-        "--output-csv",
+        "--output-parquet",
         type=str,
-        default="data/processed/pls47_candidates.csv",
-        help="Output CSV filepath (default: data/processed/pls47_candidates.csv)"
+        default="data/processed/pls47_candidates.parquet",
+        help="Output Parquet filepath (default: data/processed/pls47_candidates.parquet)"
     )
     parser.add_argument(
         "--output-report",
@@ -356,7 +356,7 @@ def main():
         mode=args.mode,
         preset=args.preset,
         raw_dir=args.raw_dir,
-        output_csv=args.output_csv,
+        output_parquet=args.output_parquet,
         output_report=args.output_report
     )
 

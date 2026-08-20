@@ -207,7 +207,7 @@ def generate_dossier_pdf(
             ("Stabilitas Termal (Aliphatic Index)", f"{c_ai:.2f}", "Lolos (>= 60.0, Tahan panas tropis)"),
             ("Instability Index (II)", f"{c_ii:.2f}", "Lolos (< 40.0, Stabil dalam larutan)"),
             ("Rasio Asam Amino Hidrofobik", f"{c_hydro:.1f}%", "Lolos (30.0% - 55.0%, Insersi membran)"),
-            ("Indeks Boman (Afinitas)", f"{c_boman:.2f} kcal/mol", "Lolos (0.0 - 2.5 kcal/mol, Non-toksik)"),
+            ("Indeks Boman (Afinitas)", f"{c_boman:.2f} kcal/mol", "Lolos (0.0 - 2.5 kcal/mol, Predicted Low Cytotoxicity)"),
             ("Muatan Bersih @ pH 4.0 (Z_4)", f"+{c_c4:.2f}", "Kationik Kuat (Aktif pangan asam)"),
             ("Muatan Bersih @ pH 7.4 (Z_7.4)", f"+{c_c7:.2f}", "Kationik (Stabil matriks netral)")
         ]
@@ -217,8 +217,8 @@ def generate_dossier_pdf(
             ("Isoelectric Point (pI)", f"{c_pi:.2f}", "Passed (>= 8.4, Prevents precipitation)"),
             ("Thermal Stability (Aliphatic Index)", f"{c_ai:.2f}", "Passed (>= 60.0, Tropical thermal stability)"),
             ("Instability Index (II)", f"{c_ii:.2f}", "Passed (< 40.0, Stable in solution)"),
-            ("Hydrophobic Ratio", f"{c_hydro:.1f}%", "Passed (30.0% - 55.0%, Membrane insertion)"),
-            ("Boman Index", f"{c_boman:.2f} kcal/mol", "Passed (0.0 - 2.5 kcal/mol, Non-toxic)"),
+            ("Hydrophobic Amino Acid Ratio", f"{c_hydro:.1f}%", "Passed (30.0% - 55.0%, Membrane insertion)"),
+            ("Boman Index", f"{c_boman:.2f} kcal/mol", "Passed (0.0 - 2.5 kcal/mol, Predicted Low Cytotoxicity)"),
             ("Net Charge @ pH 4.0 (Z_4)", f"+{c_c4:.2f}", "Strong Cationic (Active in acid foods)"),
             ("Net Charge @ pH 7.4 (Z_7.4)", f"+{c_c7:.2f}", "Cationic (Stable in neutral matrix)")
         ]

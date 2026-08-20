@@ -363,7 +363,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "slider_ai": "Ketahanan Suhu Panas Min (Aliphatic Index)",
         "slider_ii": "Batas Kerusakan Masa Simpan (Instability Index < 40)",
         "slider_hydro": "Rentang Rasio Hidrofobik (%) (Insersi Membran)",
-        "slider_boman": "Batas Keamanan Sel Inang (Indeks Boman 0.0 - 2.5)",
+        "slider_boman": "Prediksi Sitotoksisitas Rendah (Indeks Boman 0.0 - 2.5)",
         "origin_filter": "Asal Sekuens Genomik:",
 
         # Tabs
@@ -473,7 +473,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "slider_ai": "Min Heat Stability (Aliphatic Index)",
         "slider_ii": "Max Degradation Threshold (Instability Index < 40)",
         "slider_hydro": "Hydrophobic Ratio Range (%) (Membrane Insertion)",
-        "slider_boman": "Host Cell Safety Range (Boman Index 0.0 - 2.5)",
+        "slider_boman": "Predicted Low Cytotoxicity (Boman Index 0.0 - 2.5)",
         "origin_filter": "Genomic Sequence Origin:",
 
         # Tabs
