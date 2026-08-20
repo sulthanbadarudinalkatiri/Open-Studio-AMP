@@ -1,5 +1,9 @@
+import logging
 import argparse
 import sys
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
 import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -76,24 +80,24 @@ def generate_case_study_report(
         "---",
         "",
         "## 1. Baseline Control: Commercial Mesophilic Standard (Nisin A, E234)",
-        "Nisin A dari *Lactococcus lactis* mesofilik merupakan pengawet alami komersial yang umum digunakan. Pada suhu ruang tropis (28–35°C), peptida ini rentan terhadap inaktivasi dan penurunan bioaktivitas.",
+        "Nisin A from mesophilic *Lactococcus lactis* is a common commercial natural preservative. At tropical room temperatures (28–35°C), this peptide is prone to inactivation and loss of bioactivity.",
         "",
-        "| Parameter | Nisin A (Core) | Evaluasi Biokimia Pangan |",
+        "| Parameter | Nisin A (Core) | Biochemical Food Evaluation |",
         "| :--- | :---: | :--- |",
-        f"| **Sekuens** | `{nisin_res['sequence']}` | 34 asam amino |",
-        f"| **Panjang ($L$)** | {nisin_res['length']} aa | Bioavailabilitas & difusi matriks baik |",
-        f"| **Muatan @ pH 6.0** | +{nisin_res['charge_ph6']:.2f} | Kationik moderat pada pangan asam rendah |",
-        f"| **Titik Isoelektrik (pI)** | {nisin_res['isoelectric_point']:.2f} | Titik netral di atas pH makanan |",
-        f"| **Aliphatic Index (AI)** | {nisin_res['aliphatic_index']:.2f} | **Moderat (Kerapuhan Termal Tropis)** |",
-        f"| **Instability Index (II)** | {nisin_res['instability_index']:.2f} | Stabil (< 40.0) |",
-        f"| **Hydrophobic Ratio** | {nisin_res['hydrophobic_ratio']:.1f}% | Batas bawah (29.4%) |",
-        f"| **Boman Index** | {nisin_res['boman_index']:.2f} kcal/mol | Selektif terhadap membran mikroba |",
-        f"| **AliphaScore-35** | **{nisin_res['as35_score']:.2f} / 100** | Skor acuan mesofilik |",
+        f"| **Sequence** | `{nisin_res['sequence']}` | 34 amino acids |",
+        f"| **Length ($L$)** | {nisin_res['length']} aa | Good bioavailability & matrix diffusion |",
+        f"| **Charge @ pH 6.0** | +{nisin_res['charge_ph6']:.2f} | Moderate cationic in low-acid foods |",
+        f"| **Isoelectric Point (pI)** | {nisin_res['isoelectric_point']:.2f} | Neutral point above food pH |",
+        f"| **Aliphatic Index (AI)** | {nisin_res['aliphatic_index']:.2f} | **Moderate (Tropical Thermal Fragility)** |",
+        f"| **Instability Index (II)** | {nisin_res['instability_index']:.2f} | Stable (< 40.0) |",
+        f"| **Hydrophobic Ratio** | {nisin_res['hydrophobic_ratio']:.1f}% | Lower limit (29.4%) |",
+        f"| **Boman Index** | {nisin_res['boman_index']:.2f} kcal/mol | Selective against microbial membranes |",
+        f"| **AliphaScore-35** | **{nisin_res['as35_score']:.2f} / 100** | Mesophilic reference score |",
         "",
         "---",
         "",
         "## 2. Top Novel Extremophile Candidates (Thermophilic Food AMPs)",
-        "Kandidat berikut menunjukkan keunggulan stabilitas termal ekstrem, muatan kationik tinggi, dan ketahanan masa simpan tanpa ketergantungan rantai dingin (*cold-chain free*):",
+        "The following candidates show extreme thermal stability, high cationic charge, and shelf-life durability without relying on a cold chain:",
         "",
         "| Rank | Peptide ID | Source | Length | Charge @ pH 6.0 | Aliphatic Index | Instability Index | AliphaScore-35 | Thermostability Tier |",
         "| :---: | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |"
@@ -108,7 +112,7 @@ def generate_case_study_report(
 
     lines.extend([
         "",
-        "### Detail Sekuens Top Kandidat:",
+        "### Top Candidate Sequence Details:",
         ""
     ])
 
@@ -118,7 +122,7 @@ def generate_case_study_report(
             f"```text",
             f"{row['sequence']}",
             f"```",
-            f"* **Sifat Biofisik:** AI = **{row['aliphatic_index']:.2f}** (Gold Standard), II = {row['instability_index']:.2f} (Stabil), Muatan @ pH 6.0 = +{row['charge_ph6']:.2f}, pI = {row['isoelectric_point']:.2f}, Rasio Hidrofobik = {row['hydrophobic_ratio']:.1f}%, Boman = {row['boman_index']:.2f} kcal/mol.",
+            f"* **Biophysical Traits:** AI = **{row['aliphatic_index']:.2f}** (Gold Standard), II = {row['instability_index']:.2f} (Stable), Charge @ pH 6.0 = +{row['charge_ph6']:.2f}, pI = {row['isoelectric_point']:.2f}, Hydrophobic Ratio = {row['hydrophobic_ratio']:.1f}%, Boman = {row['boman_index']:.2f} kcal/mol.",
             ""
         ])
 
@@ -126,22 +130,22 @@ def generate_case_study_report(
         "---",
         "",
         "## 3. Scientific Comparison & Tropical Food Insights",
-        r"1. **Keunggulan Stabilitas Termal Tropis ($\Delta \text{AI} > +20$):**",
-        f"   Kandidat unggulan dari *G. thermocatenulatus* PLS47 memiliki Aliphatic Index mencapai **>95–110**, jauh melampaui Nisin A ({nisin_res['aliphatic_index']:.2f}). Densitas residu alifatik bercabang (Ala, Val, Ile, Leu) membentuk inti hidrofobik yang sangat padat, mencegah *thermal unfolding* pada suhu ruang tropis (30–35°C).",
-        "2. **Penetrasi Elektrostatik Matriks Asam Rendah (pH 6.0):**",
-        f"   Kandidat PLS47 mempertahankan muatan positif tinggi (+3.0 hingga +5.0) pada pH 6.0 (pangan olahan seperti susu, tahu, dan daging), menjamin avidity penempelan ke membran *Listeria monocytogenes*, *Bacillus cereus*, dan *Salmonella enterica*.",
-        "3. **Keamanan Konsumsi (Boman Index 0.0 – 2.5 kcal/mol):**",
-        "   Seluruh kandidat yang lolos mempertahankan afinitas membran yang terkalibrasi tanpa memicu sitotoksisitas atau hemolisis sel mamalia.",
+        r"1. **Tropical Thermal Stability Advantage ($\Delta \text{AI} > +20$):**",
+        f"   Top candidates from *G. thermocatenulatus* PLS47 achieve an Aliphatic Index of **>95–110**, far exceeding Nisin A ({nisin_res['aliphatic_index']:.2f}). The high density of branched aliphatic residues (Ala, Val, Ile, Leu) forms a dense hydrophobic core, preventing thermal unfolding at tropical room temperatures (30–35°C).",
+        "2. **Electrostatic Penetration in Low-Acid Matrices (pH 6.0):**",
+        f"   PLS47 candidates maintain a high positive charge (+3.0 to +5.0) at pH 6.0 (processed foods like milk, tofu, and meat), ensuring high binding avidity to the membranes of *Listeria monocytogenes*, *Bacillus cereus*, and *Salmonella enterica*.",
+        "3. **Consumption Safety (Boman Index 0.0 – 2.5 kcal/mol):**",
+        "   All passing candidates maintain calibrated membrane affinity without triggering mammalian cell cytotoxicity or hemolysis.",
         "",
         "---",
         "",
         "## 4. Elimination Audit Trail Summary",
-        f"* **Total Gagal Muatan @ pH 6.0 (< +2.0):** {charge_fails:,} sekuens",
-        f"* **Total Gagal Titik Isoelektrik (pI < 8.4):** {pi_fails:,} sekuens",
-        f"* **Total Gagal Aliphatic Index (AI < 60.0):** {ai_fails:,} sekuens",
-        f"* **Total Gagal Instability Index (II >= 40.0):** {ii_fails:,} sekuens",
-        f"* **Total Gagal Rasio Hidrofobik (< 28% atau > 55%):** {hydro_fails:,} sekuens",
-        f"* **Total Gagal Boman Index (di luar 0.0 - 2.5 kcal/mol):** {boman_fails:,} sekuens",
+        f"* **Total Failed Charge @ pH 6.0 (< +2.0):** {charge_fails:,} sequences",
+        f"* **Total Failed Isoelectric Point (pI < 8.4):** {pi_fails:,} sequences",
+        f"* **Total Failed Aliphatic Index (AI < 60.0):** {ai_fails:,} sequences",
+        f"* **Total Failed Instability Index (II >= 40.0):** {ii_fails:,} sequences",
+        f"* **Total Failed Hydrophobic Ratio (< 28% or > 55%):** {hydro_fails:,} sequences",
+        f"* **Total Failed Boman Index (outside 0.0 - 2.5 kcal/mol):** {boman_fails:,} sequences",
         ""
     ])
 
@@ -182,26 +186,26 @@ def run_pipeline(
             f"Invalid mode '{mode}'. Whitelisted modes are: {', '.join(sorted(VALID_MODES))}"
         )
 
-    print(BANNER)
+    logger.info(BANNER)
     t_start = time.time()
 
     # 1. Setup Configuration
     if clean_preset == "permissive":
         config = FilterConfig.permissive_amp_preset()
-        print(f"[CONFIG] Active Preset: Permissive AMP Screening (Validated Whitelist)")
+        logger.info(f"[CONFIG] Active Preset: Permissive AMP Screening (Validated Whitelist)")
     else:
         config = FilterConfig.tropical_preset()
-        print(f"[CONFIG] Active Preset: Strict Tropical Food Preservation (Validated Whitelist)")
+        logger.info(f"[CONFIG] Active Preset: Strict Tropical Food Preservation (Validated Whitelist)")
 
     # 2. Ingest Genome Files
-    print(f"\n[STEP 1/4] Genome Ingestion for '{prefix}' (BioProject: {bioproject})...")
+    logger.info(f"\n[STEP 1/4] Genome Ingestion for '{prefix}' (BioProject: {bioproject})...")
     fetcher = GenomeFetcher(raw_data_dir=raw_dir)
     fna_path, faa_path = fetcher.get_genome_files(prefix=prefix)
-    print(f"  - Genomic DNA FNA : {fna_path}")
-    print(f"  - Protein CDS FAA : {faa_path}")
+    logger.info(f"  - Genomic DNA FNA : {fna_path}")
+    logger.info(f"  - Protein CDS FAA : {faa_path}")
 
     # 3. Dual-Phase Extraction
-    print(f"\n[STEP 2/4] Sequence Extraction (Mode: {clean_mode.upper()})...")
+    logger.info(f"\n[STEP 2/4] Sequence Extraction (Mode: {clean_mode.upper()})...")
     extracted_items = []
 
     if clean_mode in ["cds", "all"]:
@@ -210,7 +214,7 @@ def run_pipeline(
         for item in extract_annotated_cds(faa_path, organism_prefix=prefix.upper()):
             extracted_items.append(item)
             cds_count += 1
-        print(f"  - Annotated CDS Mined : {cds_count:,} candidates ({time.time() - t0:.2f}s)")
+        logger.info(f"  - Annotated CDS Mined : {cds_count:,} candidates ({time.time() - t0:.2f}s)")
 
     if clean_mode in ["sorfs", "all"]:
         t0 = time.time()
@@ -218,17 +222,17 @@ def run_pipeline(
         for item in extract_six_frame_sorfs(fna_path, organism_prefix=prefix.upper()):
             extracted_items.append(item)
             sorf_count += 1
-        print(f"  - Cryptic sORFs Mined  : {sorf_count:,} candidates (Tri-Start ATG/GTG/TTG) ({time.time() - t0:.2f}s)")
+        logger.info(f"  - Cryptic sORFs Mined  : {sorf_count:,} candidates (Tri-Start ATG/GTG/TTG) ({time.time() - t0:.2f}s)")
 
     total_extracted = len(extracted_items)
-    print(f"  -> Total Raw Peptides to Screen: {total_extracted:,}")
+    logger.info(f"  -> Total Raw Peptides to Screen: {total_extracted:,}")
 
     if total_extracted == 0:
-        print("[WARNING] No candidate sequences extracted. Exiting pipeline.")
+        logger.info("[WARNING] No candidate sequences extracted. Exiting pipeline.")
         return pd.DataFrame(), pd.DataFrame()
 
     # 4. Physicochemical Filtering & Scoring
-    print(f"\n[STEP 3/4] Physicochemical Filtering & AliphaScore-35 Scoring...")
+    logger.info(f"\n[STEP 3/4] Physicochemical Filtering & AliphaScore-35 Scoring...")
     t0 = time.time()
     evaluated_records = []
 
@@ -242,25 +246,25 @@ def run_pipeline(
         evaluated_records.append(eval_res)
 
         if (idx + 1) % 10000 == 0 or (idx + 1) == total_extracted:
-            print(f"  - Processed {idx + 1:,} / {total_extracted:,} sequences...")
+            logger.info(f"  - Processed {idx + 1:,} / {total_extracted:,} sequences...")
 
     df_all = pd.DataFrame(evaluated_records)
     df_passed = df_all[df_all["passed_all_filters"]].sort_values(
         by="as35_score", ascending=False
     ).reset_index(drop=True)
 
-    print(f"  -> Screening completed in {time.time() - t0:.2f}s")
-    print(f"  -> Qualified Peptides Passing 7 Food Criteria: {len(df_passed):,} / {total_extracted:,} ({len(df_passed)/total_extracted*100:.2f}%)")
+    logger.info(f"  -> Screening completed in {time.time() - t0:.2f}s")
+    logger.info(f"  -> Qualified Peptides Passing 7 Food Criteria: {len(df_passed):,} / {total_extracted:,} ({len(df_passed)/total_extracted*100:.2f}%)")
 
     # 5. Baseline Evaluation & Export
-    print(f"\n[STEP 4/4] Generating R&D Artifacts & Comparative Case Study...")
+    logger.info(f"\n[STEP 4/4] Generating R&D Artifacts & Comparative Case Study...")
     nisin_res = evaluate_peptide("Nisin_A_Baseline", NISIN_A_SEQUENCE, config=config)
 
     # Save CSV
     csv_path = Path(output_csv)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     df_all.to_csv(csv_path, index=False)
-    print(f"  [SAVED] Structured CSV Database: {csv_path} ({csv_path.stat().st_size / 1024 / 1024:.2f} MB)")
+    logger.info(f"  [SAVED] Structured CSV Database: {csv_path} ({csv_path.stat().st_size / 1024 / 1024:.2f} MB)")
 
     # Save Case Study Report MD
     report_path = Path(output_report)
@@ -272,22 +276,22 @@ def run_pipeline(
         organism_name=f"Geobacillus thermocatenulatus {prefix.upper()}",
         bioproject=bioproject
     )
-    print(f"  [SAVED] Case Study Markdown Report: {report_path}")
+    logger.info(f"  [SAVED] Case Study Markdown Report: {report_path}")
 
     # Display Top 3 in Console
     if len(df_passed) > 0:
-        print("\n" + "=" * 80)
-        print("  TOP 3 NOVEL EXTREMOPHILE CANDIDATES DISCOVERED:")
-        print("=" * 80)
+        logger.info("\n" + "=" * 80)
+        logger.info("  TOP 3 NOVEL EXTREMOPHILE CANDIDATES DISCOVERED:")
+        logger.info("=" * 80)
         top3 = df_passed.head(3)
         for rank, (_, row) in enumerate(top3.iterrows(), 1):
-            print(f"  #{rank} {row['id']}")
-            print(f"     Seq: {row['sequence']}")
-            print(f"     Score: {row['as35_score']:.2f} | AI: {row['aliphatic_index']:.2f} | Charge@pH6: +{row['charge_ph6']:.2f} | II: {row['instability_index']:.2f} | Tier: {row['thermostability_tier']}")
-        print("=" * 80)
+            logger.info(f"  #{rank} {row['id']}")
+            logger.info(f"     Seq: {row['sequence']}")
+            logger.info(f"     Score: {row['as35_score']:.2f} | AI: {row['aliphatic_index']:.2f} | Charge@pH6: +{row['charge_ph6']:.2f} | II: {row['instability_index']:.2f} | Tier: {row['thermostability_tier']}")
+        logger.info("=" * 80)
 
     elapsed = time.time() - t_start
-    print(f"\n[PIPELINE COMPLETE] Finished all steps in {elapsed:.2f} seconds.")
+    logger.info(f"\n[PIPELINE COMPLETE] Finished all steps in {elapsed:.2f} seconds.")
     return df_all, df_passed
 
 

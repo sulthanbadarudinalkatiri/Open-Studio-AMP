@@ -33,6 +33,16 @@ from src.extractor import extract_from_custom_fasta
 from engine import run_pipeline, NISIN_A_SEQUENCE
 
 
+@st.cache_data(show_spinner=False)
+def get_cached_pdf(candidate: dict, top10_df: pd.DataFrame, nisin_res: dict, lang: str, organism_info: str) -> bytes:
+    return generate_dossier_pdf(
+        candidate=candidate,
+        top10_df=top10_df,
+        nisin_res=nisin_res,
+        lang=lang,
+        organism_info=organism_info
+    )
+
 # ==============================================================================
 # 1. PAGE SETUP & THEME INITIALIZATION
 # ==============================================================================
@@ -620,7 +630,7 @@ def main():
             else:
                 organism_info = ""
 
-            pdf_bytes = generate_dossier_pdf(
+            pdf_bytes = get_cached_pdf(
                 candidate=selected_candidate,
                 top10_df=filtered_df if len(filtered_df) > 0 else df_raw,
                 nisin_res=nisin_res,

@@ -1,5 +1,8 @@
+import logging
 import gzip
 import hashlib
+
+logger = logging.getLogger(__name__)
 import os
 import shutil
 from pathlib import Path
@@ -82,9 +85,9 @@ class GenomeFetcher:
             if fna_path.stat().st_size > 1000 and faa_path.stat().st_size > 1000:
                 fna_sha = compute_sha256(fna_path)
                 faa_sha = compute_sha256(faa_path)
-                print(f"[CACHE HIT] Found existing raw genome files for '{prefix}':")
-                print(f"  - Genomic DNA : {fna_path} ({fna_path.stat().st_size / 1024:.1f} KB) | SHA256: {fna_sha[:16]}...")
-                print(f"  - Annotated CDS: {faa_path} ({faa_path.stat().st_size / 1024:.1f} KB) | SHA256: {faa_sha[:16]}...")
+                logger.info(f"[CACHE HIT] Found existing raw genome files for '{prefix}':")
+                logger.info(f"  - Genomic DNA : {fna_path} ({fna_path.stat().st_size / 1024:.1f} KB) | SHA256: {fna_sha[:16]}...")
+                logger.info(f"  - Annotated CDS: {faa_path} ({faa_path.stat().st_size / 1024:.1f} KB) | SHA256: {faa_sha[:16]}...")
                 return fna_path, faa_path
 
         return None
@@ -139,7 +142,7 @@ class GenomeFetcher:
                     gz_hasher.update(chunk)
 
         gz_sha256 = gz_hasher.hexdigest()
-        print(f"  [INTEGRITY] Archive Downloaded: {temp_gz.name} | SHA256: {gz_sha256[:16]}...")
+        logger.info(f"  [INTEGRITY] Archive Downloaded: {temp_gz.name} | SHA256: {gz_sha256[:16]}...")
 
         # 2. Decompress gzip with bounded size cap
         try:
@@ -150,7 +153,7 @@ class GenomeFetcher:
 
         # 3. Compute and verify SHA256 of final decompressed file
         final_sha256 = compute_sha256(target_path)
-        print(f"  [INTEGRITY] Decompressed File : {target_path.name} ({decompressed_bytes / 1024:.1f} KB) | SHA256: {final_sha256[:16]}...")
+        logger.info(f"  [INTEGRITY] Decompressed File : {target_path.name} ({decompressed_bytes / 1024:.1f} KB) | SHA256: {final_sha256[:16]}...")
 
         if expected_sha256:
             if final_sha256.lower() != expected_sha256.lower():
@@ -160,7 +163,7 @@ class GenomeFetcher:
                     f"Expected: {expected_sha256}\n"
                     f"Observed: {final_sha256}"
                 )
-            print(f"  [VERIFIED] Checksum matched expected SHA256 digest.")
+            logger.info(f"  [VERIFIED] Checksum matched expected SHA256 digest.")
 
     def fetch_from_ncbi(
         self,
@@ -174,7 +177,7 @@ class GenomeFetcher:
         Tier 2: Queries NCBI Entrez Assembly database and downloads genomic .fna and protein .faa.
         Performs SHA256 checksum verification and decompression size bounding.
         """
-        print(f"[NCBI QUERY] Searching NCBI Assembly for '{organism_query}'...")
+        logger.info(f"[NCBI QUERY] Searching NCBI Assembly for '{organism_query}'...")
         handle = Entrez.esearch(db="assembly", term=organism_query, retmax=5)
         search_results = Entrez.read(handle)
         handle.close()
@@ -215,14 +218,14 @@ class GenomeFetcher:
         target_faa = self.raw_data_dir / f"{prefix}_protein.faa"
 
         # Download, decompress with size cap, and verify FNA
-        print(f"[DOWNLOADING] Fetching genomic DNA: {fna_url}")
+        logger.info(f"[DOWNLOADING] Fetching genomic DNA: {fna_url}")
         self._download_and_decompress(fna_url, target_fna, timeout=timeout, expected_sha256=expected_fna_sha256)
 
         # Download, decompress with size cap, and verify FAA
-        print(f"[DOWNLOADING] Fetching annotated CDS: {faa_url}")
+        logger.info(f"[DOWNLOADING] Fetching annotated CDS: {faa_url}")
         self._download_and_decompress(faa_url, target_faa, timeout=timeout, expected_sha256=expected_faa_sha256)
 
-        print(f"[SUCCESS] Downloaded, verified, and cached genome files for '{prefix}' successfully.")
+        logger.info(f"[SUCCESS] Downloaded, verified, and cached genome files for '{prefix}' successfully.")
         return target_fna, target_faa
 
     def get_genome_files(
@@ -240,7 +243,7 @@ class GenomeFetcher:
         try:
             return self.fetch_from_ncbi(organism_query=organism_query, prefix=prefix)
         except Exception as e:
-            print(f"[WARNING] NCBI download encountered error: {e}")
+            logger.info(f"[WARNING] NCBI download encountered error: {e}")
             cached_retry = self.check_local_cache(prefix)
             if cached_retry:
                 return cached_retry
