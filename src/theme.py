@@ -108,26 +108,31 @@ CUSTOM_CSS = f"""
         color: var(--color-neutral-900);
     }}
 
-    /* Hero Banner: Deep Abyss & Bioluminescent Spatial Depth */
+    /* Clinical Lab Banner: Clean, High-Precision Scientific Surface */
     .main-header {{
-        background: linear-gradient(135deg, {C["abyss_900"]} 0%, {C["abyss_800"]} 45%, {C["primary"]} 100%);
+        background-color: #FFFFFF;
         padding: 24px 32px;
         border-radius: var(--radius-lg);
-        color: #FFFFFF;
         margin-bottom: 20px;
-        box-shadow: {S["hero_glow"]};
-        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-bottom: 2px solid #0E8388;
         position: relative;
         overflow: hidden;
     }}
     .main-header::after {{
         content: "";
         position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 320px;
-        height: 320px;
-        background: radial-gradient(circle, rgba(0, 171, 179, 0.25) 0%, transparent 70%);
+        top: 50%;
+        right: 28px;
+        transform: translateY(-50%);
+        width: 130px;
+        height: 130px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' fill='none' stroke='%230E8388' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 15 C 40 35, 60 35, 80 15' /%3E%3Cpath d='M20 35 C 40 15, 60 15, 80 35' /%3E%3Cpath d='M20 55 C 40 75, 60 75, 80 55' /%3E%3Cpath d='M20 75 C 40 55, 60 55, 80 75' /%3E%3Cline x1='28' y1='22' x2='72' y2='22' /%3E%3Cline x1='20' y1='35' x2='80' y2='35' /%3E%3Cline x1='35' y1='45' x2='65' y2='45' /%3E%3Cline x1='20' y1='55' x2='80' y2='55' /%3E%3Cline x1='28' y1='68' x2='72' y2='68' /%3E%3Ccircle cx='20' cy='15' r='3' fill='%230E8388'/%3E%3Ccircle cx='80' cy='15' r='3' fill='%230E8388'/%3E%3Ccircle cx='20' cy='35' r='3' fill='%230E8388'/%3E%3Ccircle cx='80' cy='35' r='3' fill='%230E8388'/%3E%3Ccircle cx='20' cy='55' r='3' fill='%230E8388'/%3E%3Ccircle cx='80' cy='55' r='3' fill='%230E8388'/%3E%3Ccircle cx='20' cy='75' r='3' fill='%230E8388'/%3E%3Ccircle cx='80' cy='75' r='3' fill='%230E8388'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+        opacity: 0.08;
         pointer-events: none;
     }}
     .main-header h1 {{
@@ -135,34 +140,15 @@ CUSTOM_CSS = f"""
         font-weight: 800;
         margin: 0;
         letter-spacing: -0.03em;
-        color: #FFFFFF;
-        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        color: #0F172A;
     }}
     .main-header p {{
         font-size: 13px;
-        opacity: 0.94;
         margin: 6px 0 0 0;
         font-weight: 400;
         line-height: 1.5;
-        max-width: 95%;
-        color: #E2E8F0;
-    }}
-    .header-badge {{
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(255, 255, 255, 0.12);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 3px 10px;
-        border-radius: 20px;
-        font-size: 10.5px;
-        font-weight: 600;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        margin-bottom: 8px;
-        color: {C["accent"]};
+        max-width: 90%;
+        color: #64748B;
     }}
 
     /* Weightless KPI Cards (Glassmorphism + Elevation) */
@@ -237,6 +223,125 @@ CUSTOM_CSS = f"""
         box-shadow: {S["elevation_1"]};
     }}
 
+    /* Bio-Studio Precision Card Containers */
+    .bio-card {{
+        background: #FFFFFF;
+        border: 1px solid rgba(226, 232, 240, 0.85);
+        border-radius: var(--radius-md);
+        padding: 18px 20px 14px 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+        margin-bottom: 20px;
+    }}
+    .bio-card-header {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #F1F5F9;
+    }}
+    .bio-card-title-group {{
+        display: flex;
+        flex-direction: column;
+    }}
+    .bio-card-tag {{
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #0E8388;
+        margin-bottom: 2px;
+    }}
+    .bio-card-title {{
+        font-size: 15px;
+        font-weight: 700;
+        color: #0F172A;
+        letter-spacing: -0.01em;
+    }}
+    .bio-card-badge {{
+        background: rgba(14, 131, 136, 0.08);
+        color: #0E8388;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 20px;
+        border: 1px solid rgba(14, 131, 136, 0.2);
+    }}
+
+    /* Selected Candidate Hero Showcase Bar (Tab 2) */
+    .target-hero-card {{
+        background: #FFFFFF;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-left: 4px solid var(--color-primary);
+        border-radius: var(--radius-md);
+        padding: 16px 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+        margin-bottom: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+    }}
+    .target-hero-info {{
+        display: flex;
+        flex-direction: column;
+    }}
+    .target-hero-tag {{
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--color-primary);
+    }}
+    .target-hero-id {{
+        font-size: 16px;
+        font-weight: 800;
+        color: #0F172A;
+        font-family: var(--font-mono);
+        letter-spacing: -0.01em;
+    }}
+    .target-hero-pills {{
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }}
+    .target-stat-pill {{
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #334155;
+        font-weight: 600;
+    }}
+    .target-stat-pill strong {{
+        color: var(--color-primary);
+    }}
+
+    /* Export & Governance Hero Banner (Tab 3) */
+    .export-hero-banner {{
+        background: #FFFFFF;
+        border: 1px solid rgba(226, 232, 240, 0.9);
+        border-radius: var(--radius-md);
+        padding: 18px 22px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+        margin-bottom: 20px;
+    }}
+    .export-hero-title {{
+        font-size: 16px;
+        font-weight: 800;
+        color: #0F172A;
+        letter-spacing: -0.01em;
+        margin-bottom: 4px;
+    }}
+    .export-hero-desc {{
+        font-size: 13px;
+        color: #64748B;
+        margin-bottom: 14px;
+        line-height: 1.5;
+    }}
+
     /* Modern Tabs & Button Accents */
     .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
@@ -281,6 +386,23 @@ def render_kpi_card(title: str, value: Any, sub: str, is_alert: bool = False) ->
     """
 
 
+def render_chart_header(tag: str, title: str, badge: str = "") -> str:
+    """Renders a clinical card header with badge and uppercase category tag."""
+    safe_tag = html.escape(str(tag))
+    safe_title = html.escape(str(title))
+    safe_badge = html.escape(str(badge))
+    badge_html = f'<div class="bio-card-badge">{safe_badge}</div>' if safe_badge else ""
+    return f"""
+    <div class="bio-card-header">
+        <div class="bio-card-title-group">
+            <div class="bio-card-tag">{safe_tag}</div>
+            <div class="bio-card-title">{safe_title}</div>
+        </div>
+        {badge_html}
+    </div>
+    """
+
+
 def get_base_chart_layout(height: int = 420, margin: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
     """Centralized Plotly layout generator maintaining Antigravity SSoT design tokens."""
     return dict(
@@ -311,7 +433,6 @@ I18N: Dict[str, Dict[str, str]] = {
     "id": {
         "app_title": "Open Studio AMP · Penambangan Peptida Preservasi Pangan",
         "app_sub": "Eksplorasi kandidat peptida antimikroba (AMP) tahan panas untuk perlindungan pangan alami tanpa ketergantungan rantai dingin. Mendukung dataset acuan tanah Indonesia (G. thermocatenulatus PLS47) maupun genom kustom laboratorium Anda.",
-        "badge_env": "SUMBER ISOLAT ACUAN: TANAH GEOTERMAL INDONESIA (NCBI: PRJDB8096)",
         
         # Sidebar Structure
         "sidebar_title": "Open Studio AMP",
@@ -382,46 +503,51 @@ I18N: Dict[str, Dict[str, str]] = {
         "kpi_top": "Skor Preservasi Tertinggi",
         "kpi_top_sub": "Standar Nisin A = 41.22",
 
-        # Visualizations
-        "scatter_title": "Pemetaan Biofisik: Ketahanan Panas vs Daya Penetrasi Bakteri",
-        "scatter_x": "Ketahanan Suhu Panas (Aliphatic Index)",
-        "scatter_y": "Daya Penetrasi Dinding Sel (Muatan Bersih @ pH 6.0)",
-        "hist_title": "Distribusi Ketahanan Termal (Aliphatic Index)",
-        "hist_x": "Aliphatic Index (AI)",
-        "funnel_title": "📊 Corong Standar Tropis (Baseline)",
-        "chart_scatter_title_short": "Distribusi Suhu vs Muatan",
-        "tab1_top10_title": "🏆 Top 10 Kandidat Tersaring",
-        "tab1_top10_col_rank": "Peringkat",
-        "tab1_top10_col_id": "ID",
-        "tab1_top10_col_score": "Skor AS-35",
-        "tab1_top10_col_tier": "Kelas Suhu",
-        "tab1_top10_col_len": "Panjang",
-        "tab1_top10_col_reason": "Profil Utama",
-        "funnel_expander_title": "🔎 Lihat Detail Corong Penyaringan",
+        # Visualizations & Panels
+        "chart_delta_title": "Keunggulan Relatif Top Kandidat vs Nisin A",
+        "panel_delta_tag": "BENCHMARK NISIN A",
+        "panel_delta_badge": "Standar E234 (0%)",
+        "panel_funnel_tag": "AUDIT PIPELINE SELEKSI",
+        "panel_funnel_badge": "7 Filter Pangan",
+        "panel_titr_tag": "DINAMIKA ELEKTROSTATIK",
+        "panel_titr_badge": "Kurva Henderson-Hasselbalch",
+        "panel_mol_tag": "STRUKTUR 3D TERMODELKAN",
+        "panel_mol_badge": "Heliks Amfifatik",
+        "panel_table_tag": "DATABASE & GOVERNANSI DATA",
+        "dossier_box_title": "Ekspor Laporan Resmi & Berkas Tabular",
+        "dossier_box_desc": "Unduh berkas dossier PDF komprehensif berstandar publikasi laboratorium atau tabel dataset mentah (.CSV) untuk analisis bioinformatika lanjutan.",
+        "target_hero_tag": "PEPTIDA AKTIF TERPILIH",
+        "delta_x_axis": "% Keunggulan Relatif vs Kontrol Nisin A (Baseline = 0%)",
+        "delta_trace_ai": "Δ Ketahanan Panas (AI)",
+        "delta_trace_charge": "Δ Muatan Antibakteri (pH 6)",
+        "delta_trace_score": "Δ Skor Biopreservasi (AS-35)",
+        "delta_nisin_label": "Kontrol Nisin A (0%)",
+        "funnel_expander_title": "Corong Penyaringan Bertingkat",
         "audit_caption": "Total disaring: {total}, Lolos: {passed} ({rate:.1f}%). Eliminasi terbesar pada tahap: {biggest_drop_reason}.",
         "funnel_crit_total": "Total Sekuens Awal",
-        "funnel_crit_charge": "Gagal Muatan @ pH 6.0 (< +2.0)",
-        "funnel_crit_ai": "Gagal Ketahanan Panas (< 60.0)",
-        "funnel_crit_ii": "Gagal Stabilitas Larutan (>= 40.0)",
-        "funnel_crit_pi": "Gagal Titik Isoelektrik (< 8.4)",
-        "funnel_crit_hydro": "Gagal Rasio Hidrofobik (Di luar 30-55%)",
-        "funnel_crit_boman": "Gagal Indeks Boman (Di luar 0.0-2.5 kcal/mol)",
+        "funnel_crit_valid": "Lolos Validasi & Panjang",
+        "funnel_crit_charge": "Lolos Muatan @ pH 6.0 (>= +2.0)",
+        "funnel_crit_ai": "Lolos Ketahanan Panas (>= 60.0)",
+        "funnel_crit_ii": "Lolos Stabilitas Larutan (< 40.0)",
+        "funnel_crit_pi": "Lolos Titik Isoelektrik (>= 8.4)",
+        "funnel_crit_hydro": "Lolos Rasio Hidrofobik (30-55%)",
+        "funnel_crit_boman": "Lolos Indeks Boman (0.0-2.5 kcal/mol)",
         "funnel_crit_passed": "Kandidat Lolos Seluruh Kriteria",
         "funnel_caption": "📝 **Catatan Diagnostik**: Grafik ini melacak audisi awal (baseline) dari total {total} populasi data hingga tersaring menjadi {baseline} kandidat yang memenuhi 7 filter dasar pangan. Pengaturan parameter ketat Anda di panel Sidebar kemudian memangkas lagi populasi dasar tersebut menjadi **{active}** kandidat elit yang sedang dianalisis di layar saat ini.",
 
         # In-Depth Profile
         "cand_profile": "Profil Biofisik Peptida Terpilih",
         "primary_seq": "SEKUENS ASAM AMINO PRIMER",
-        "titr_title": "Kurva Titrasi Muatan Henderson-Hasselbalch (pH 0 - 14)",
+        "titr_title": "Kurva Titrasi Muatan (pH 0 - 14)",
         "titr_ph4": "pH 4.0 (Pangan Asam)",
         "titr_ph6": "pH 6.0 (Pangan Rendah Asam)",
         "titr_ph7": "pH 7.4 (Matriks Netral)",
-        "mol_title": "Model Struktur 3D (Heliks Amfifatik)",
+        "mol_title": "Model Struktur 3D Terprediksi",
         "mol_caption": "🟢 Tosca = Kationik (Arg, Lys, His) | 🟠 Oranye = Hidrofobik (Ala, Val, Leu, Ile, Phe, Trp, Met)",
-        "table_title": "Database Hasil Skrining & Generator Berkas Dossier",
+        "table_title": "Eksplorasi Database Kandidat Lolos Seleksi",
         "btn_csv": "📥 Unduh Tabel Data Lengkap (.CSV)",
         "btn_pdf": "📄 Unduh Berkas Dossier Resmi (.PDF)",
-        "glossary_title": "ℹ️ Pelajari Metrik & Standar Acuan",
+        "glossary_title": "📖 Pelajari Metrik & Panduan Parameter",
         "glossary_nisin_title": "Apa itu Nisin A (E234)?",
         "glossary_nisin_desc": "Nisin A adalah bakteriosin alami yang digunakan sebagai standar pengawet pangan komersial global (E234). Nisin sangat efektif, namun sering mengalami degradasi (rusak) pada suhu tinggi di iklim tropis, sehingga diperlukan alternatif peptida yang lebih stabil terhadap panas.",
         "glossary_7filters_title": "Daftar 7 Parameter Skrining",
@@ -432,7 +558,6 @@ I18N: Dict[str, Dict[str, str]] = {
     "en": {
         "app_title": "Open Studio AMP · Food Biopreservation Peptide Mining",
         "app_sub": "Mining thermostable antimicrobial peptides (AMPs) for clean-label food protection without cold-chain dependence. Supports native Indonesian soil benchmark (G. thermocatenulatus PLS47) and custom laboratory genomes.",
-        "badge_env": "BENCHMARK ISOLATE: INDONESIAN GEOTHERMAL SOIL (NCBI: PRJDB8096)",
         
         # Sidebar Structure
         "sidebar_title": "Open Studio AMP",
@@ -503,46 +628,51 @@ I18N: Dict[str, Dict[str, str]] = {
         "kpi_top": "Top Preservation Score",
         "kpi_top_sub": "Nisin A Baseline = 41.22",
 
-        # Visualizations
-        "scatter_title": "Biophysical Profile: Thermal Resistance vs Bacterial Penetration",
-        "scatter_x": "Thermal Heat Resistance (Aliphatic Index)",
-        "scatter_y": "Bacterial Penetration (Net Charge @ pH 6.0)",
-        "hist_title": "Thermal Resistance Distribution (Aliphatic Index)",
-        "hist_x": "Aliphatic Index (AI)",
-        "funnel_title": "📊 Tropical Standard Funnel (Baseline)",
-        "chart_scatter_title_short": "Thermal vs Charge Distribution",
-        "tab1_top10_title": "🏆 Top 10 Filtered Candidates",
-        "tab1_top10_col_rank": "Rank",
-        "tab1_top10_col_id": "ID",
-        "tab1_top10_col_score": "AS-35 Score",
-        "tab1_top10_col_tier": "Thermoclass",
-        "tab1_top10_col_len": "Length",
-        "tab1_top10_col_reason": "Key Profile",
-        "funnel_expander_title": "🔎 View Screening Funnel Details",
+        # Visualizations & Panels
+        "chart_delta_title": "Relative Advantage: Top Candidates vs Nisin A",
+        "panel_delta_tag": "NISIN A BENCHMARK",
+        "panel_delta_badge": "E234 Standard (0%)",
+        "panel_funnel_tag": "PIPELINE SELECTION AUDIT",
+        "panel_funnel_badge": "7 Food Filters",
+        "panel_titr_tag": "ELECTROSTATIC DYNAMICS",
+        "panel_titr_badge": "Henderson-Hasselbalch Curve",
+        "panel_mol_tag": "3D MODELED STRUCTURE",
+        "panel_mol_badge": "Amphipathic Helix",
+        "panel_table_tag": "DATABASE & DATA GOVERNANCE",
+        "dossier_box_title": "Export Official Dossier & Tabular Dataset",
+        "dossier_box_desc": "Download publication-grade scientific PDF dossiers for wet-lab validation or export full raw tabular datasets (.CSV) for advanced downstream bioinformatic workflows.",
+        "target_hero_tag": "ACTIVE SELECTED PEPTIDE",
+        "delta_x_axis": "% Relative Advantage vs Nisin A Control (Baseline = 0%)",
+        "delta_trace_ai": "Δ Heat Stability (AI)",
+        "delta_trace_charge": "Δ Antibacterial Charge (pH 6)",
+        "delta_trace_score": "Δ Preservation Score (AS-35)",
+        "delta_nisin_label": "Nisin A Baseline (0%)",
+        "funnel_expander_title": "Multi-Stage Screening Funnel",
         "audit_caption": "Total screened: {total}, Passed: {passed} ({rate:.1f}%). Largest elimination stage: {biggest_drop_reason}.",
         "funnel_crit_total": "Total Starting Sequences",
-        "funnel_crit_charge": "Failed Net Charge @ pH 6.0 (< +2.0)",
-        "funnel_crit_ai": "Failed Thermal Resistance (< 60.0)",
-        "funnel_crit_ii": "Failed Solution Stability (>= 40.0)",
-        "funnel_crit_pi": "Failed Isoelectric Point (< 8.4)",
-        "funnel_crit_hydro": "Failed Hydrophobic Ratio (Outside 30-55%)",
-        "funnel_crit_boman": "Failed Boman Index (Outside 0.0-2.5 kcal/mol)",
+        "funnel_crit_valid": "Passed Validation & Length",
+        "funnel_crit_charge": "Passed Net Charge @ pH 6.0 (>= +2.0)",
+        "funnel_crit_ai": "Passed Thermal Resistance (>= 60.0)",
+        "funnel_crit_ii": "Passed Solution Stability (< 40.0)",
+        "funnel_crit_pi": "Passed Isoelectric Point (>= 8.4)",
+        "funnel_crit_hydro": "Passed Hydrophobic Ratio (30-55%)",
+        "funnel_crit_boman": "Passed Boman Index (0.0-2.5 kcal/mol)",
         "funnel_crit_passed": "Candidates Passing All Criteria",
         "funnel_caption": "📝 **Diagnostic Note**: This chart tracks the initial baseline audition from the total dataset of {total} down to {baseline} candidates meeting the 7 basic food-grade filters. Your strict sidebar parameter settings then further refine this baseline down to the **{active}** elite candidates currently being analyzed on screen.",
 
         # In-Depth Profile
         "cand_profile": "Selected Peptide Biophysical Profile",
         "primary_seq": "PRIMARY AMINO ACID SEQUENCE",
-        "titr_title": "Henderson-Hasselbalch Charge Titration Curve (pH 0 - 14)",
+        "titr_title": "Charge Titration Curve (pH 0 - 14)",
         "titr_ph4": "pH 4.0 (Acidic Food)",
         "titr_ph6": "pH 6.0 (Low-Acid Food)",
         "titr_ph7": "pH 7.4 (Neutral Matrix)",
-        "mol_title": "3D Structural Model (Amphipathic Helix)",
+        "mol_title": "Predicted 3D Molecular Model",
         "mol_caption": "🟢 Teal = Cationic (Arg, Lys, His) | 🟠 Orange = Hydrophobic (Ala, Val, Leu, Ile, Phe, Trp, Met)",
-        "table_title": "Screening Database & Dossier File Generator",
+        "table_title": "Passed Candidates Screening Database",
         "btn_csv": "📥 Download Full Data Table (.CSV)",
         "btn_pdf": "📄 Download Official Dossier (.PDF)",
-        "glossary_title": "ℹ️ Learn Metrics & Reference Standards",
+        "glossary_title": "📖 Learn Metrics & Reference Standards",
         "glossary_nisin_title": "What is Nisin A (E234)?",
         "glossary_nisin_desc": "Nisin A is a natural bacteriocin used as the global commercial food preservative standard (E234). It is highly effective but often degrades at high temperatures in tropical climates, necessitating more thermostable peptide alternatives.",
         "glossary_7filters_title": "The 7 Screening Parameters",

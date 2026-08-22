@@ -18,6 +18,7 @@ from src.theme import (
     CUSTOM_CSS,
     I18N,
     render_kpi_card,
+    render_chart_header,
     get_base_chart_layout,
     C, R, S, TYPO,
     build_smart_label
@@ -36,12 +37,10 @@ from src.filters import (
 from src.extractor import extract_from_custom_fasta
 from engine import run_pipeline, NISIN_A_SEQUENCE
 
-
 def _safe(value: Any, max_len: int = 100) -> str:
     if not isinstance(value, str):
         value = str(value)
     return html.escape(value[:max_len])
-
 
 @st.cache_data(show_spinner=False)
 def get_cached_pdf(candidate: dict, top10_df: pd.DataFrame, nisin_res: dict, lang: str, organism_info: str) -> bytes:
@@ -64,7 +63,6 @@ st.set_page_config(
 )
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
 
 # ==============================================================================
 # 2. DATA INGESTION & CACHING
@@ -94,7 +92,6 @@ def load_screening_data() -> pd.DataFrame:
 
     return df
 
-
 @st.cache_data(show_spinner=False)
 def process_custom_fasta_data(fasta_content: str, filename: str = "custom.fasta") -> pd.DataFrame:
     """
@@ -116,7 +113,6 @@ def process_custom_fasta_data(fasta_content: str, filename: str = "custom.fasta"
     df_custom = pd.DataFrame(evaluated)
     df_custom["source"] = [c["source"] for c in extracted]
     return df_custom
-
 
 # ==============================================================================
 # 3. MAIN APPLICATION CONTROLLER
@@ -380,15 +376,13 @@ def main():
             selected_cand_id = "Nisin_A_Baseline"
 
     # --------------------------------------------------------------------------
-    # MAIN HEADER BANNER (ANTIGRAVITY BIOLUMINESCENT DEPTH)
+    # MAIN HEADER BANNER (CLINICAL LAB BANNER)
     # --------------------------------------------------------------------------
     safe_app_title = html.escape(t['app_title'])
     safe_app_sub = html.escape(t['app_sub'])
-    safe_badge_env = html.escape(t['badge_env'])
     st.markdown(
         f"""
         <header class="main-header" role="banner">
-            <div class="header-badge">⚡ {safe_badge_env}</div>
             <h1>{safe_app_title}</h1>
             <p>{safe_app_sub}</p>
         </header>
@@ -399,10 +393,10 @@ def main():
     # --------------------------------------------------------------------------
     # ACTIVE FILTERS GLOBAL INDICATOR
     # --------------------------------------------------------------------------
-    pill_style = "background: rgba(0, 171, 179, 0.25); border: 1px solid rgba(0, 171, 179, 0.8); padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #FFFFFF; text-shadow: 0px 1px 2px rgba(0,0,0,0.5);"
+    pill_style = "background: rgba(14, 131, 136, 0.08); border: 1px solid rgba(14, 131, 136, 0.35); padding: 4px 12px; border-radius: 20px; font-size: 12.5px; font-weight: 600; color: #0E8388;"
     pills_html = f"""
-    <div style='display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; margin-bottom: 24px; align-items: center;'>
-        <span style='font-size: 13px; font-weight: 600; color: #CBD5E1; margin-right: 4px;'>Active Filters:</span>
+    <div style='display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; margin-bottom: 22px; align-items: center;'>
+        <span style='font-size: 13px; font-weight: 700; color: #475569; margin-right: 4px;'>Active Filters:</span>
         <span style='{pill_style}'>AS-35 ≥ {slider_score}</span>
         <span style='{pill_style}'>Charge ≥ {slider_charge}</span>
         <span style='{pill_style}'>AI ≥ {slider_ai}</span>
@@ -427,153 +421,292 @@ def main():
         pass_rate = (total_passed / total_screened * 100.0) if total_screened > 0 else 0.0
         top_score = filtered_df["as35_score"].max() if total_passed > 0 else 0.0
 
-        col_kpi1, col_kpi2, col_kpi3, col_kpi4 = st.columns(4)
-        with col_kpi1:
+        # 1. Top KPI Metrics (4 Kolom di atas)
+        k_c1, k_c2, k_c3, k_c4 = st.columns(4)
+        with k_c1:
             st.markdown(render_kpi_card(t["kpi_total"], f"{total_screened:,}", t["kpi_total_sub"]), unsafe_allow_html=True)
-        with col_kpi2:
+        with k_c2:
             st.markdown(render_kpi_card(t["kpi_passed"], f"{total_passed:,}", t["kpi_passed_sub"]), unsafe_allow_html=True)
-        with col_kpi3:
+        with k_c3:
             st.markdown(render_kpi_card(t["kpi_rate"], f"{pass_rate:.2f}%", t["kpi_rate_sub"]), unsafe_allow_html=True)
-        with col_kpi4:
+        with k_c4:
             st.markdown(render_kpi_card(t["kpi_top"], f"{top_score:.2f}", t["kpi_top_sub"]), unsafe_allow_html=True)
 
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        # 2. Pelajari Metrik (Glossary & Parameter Guide) persis di bawah 4 kartu KPI
+        st.markdown("<div style='height: 6px;'></div>", unsafe_allow_html=True)
+        with st.expander(t["glossary_title"]):
+            st.markdown(f"**{t['glossary_nisin_title']}**")
+            st.write(t["glossary_nisin_desc"])
+            st.markdown(f"**{t['glossary_7filters_title']}**")
+            st.markdown(t["glossary_7filters_desc"])
 
-        with st.expander(t.get("glossary_title", "ℹ️ Glossary")):
-            st.markdown(f"**{t.get('glossary_nisin_title', '')}**")
-            st.write(t.get("glossary_nisin_desc", ""))
-            st.markdown(f"**{t.get('glossary_7filters_title', '')}**")
-            st.markdown(t.get("glossary_7filters_desc", ""))
+        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        # 3. Main Analytics Area (Split: Scatter Plot Kiri & Funnel Kanan)
+        col_left, col_right = st.columns([6, 4], gap="large")
 
-        if total_passed == 0:
-            st.info(f"**{t.get('empty_state_title', '')}**\n\n{t.get('empty_state_desc', '')}", icon="ℹ️")
-        else:
-            # 1. Scatter Plot (Hero Chart)
-            st.subheader(t["chart_scatter_title_short"])
-            
-            scatter_plot_df = filtered_df.copy()
-            color_map = {
-                "Thermophilic": "#F97316",
-                "Mesophilic": "#0E8388"
-            }
-            fig_scatter = px.scatter(
-                scatter_plot_df,
-                x="aliphatic_index",
-                y="charge_ph6",
-                color="thermostability_tier",
-                hover_name="id",
-                hover_data={"aliphatic_index": ":.1f", "charge_ph6": ":.2f", "as35_score": ":.2f", "source": True},
-                color_discrete_map=color_map,
-                labels={"aliphatic_index": t["scatter_x"], "charge_ph6": t["scatter_y"], "thermostability_tier": t["tab1_top10_col_tier"]}
-            )
-            
-            # Nisin A Control Point
-            fig_scatter.add_trace(go.Scatter(
-                x=[nisin_res["aliphatic_index"]],
-                y=[nisin_res["charge_ph6"]],
-                mode="markers+text",
-                marker=dict(size=14, color=C["danger"], symbol="diamond", line=dict(width=2, color="#FFFFFF")),
-                name="Nisin A Control",
-                text=["Nisin A (E234)"],
-                textposition="top right",
-                textfont=dict(family=TYPO["font_family"], color=C["danger"], size=12),
-                showlegend=False
-            ))
+        with col_left:
+            if total_passed == 0:
+                st.info(f"**{t['empty_state_title']}**\n\n{t['empty_state_desc']}", icon="💡")
+            else:
+                # Clinical Card Header
+                st.markdown(
+                    render_chart_header(t["panel_delta_tag"], t["chart_delta_title"], t["panel_delta_badge"]),
+                    unsafe_allow_html=True
+                )
 
-            # Selected Candidate Point
-            if selected_candidate is not None:
-                fig_scatter.add_trace(go.Scatter(
-                    x=[selected_candidate["aliphatic_index"]],
-                    y=[selected_candidate["charge_ph6"]],
-                    mode="markers",
-                    marker=dict(size=18, color="#FFFFFF", symbol="star", line=dict(width=2, color=C["primary"])),
-                    name="Selected Target",
-                    hoverinfo="skip",
-                    showlegend=False
+                top_n = min(5, len(filtered_df))
+                top_df = filtered_df.sort_values(by="as35_score", ascending=False).head(top_n).copy()
+                
+                # Invert row order so #1 rank appears at the top of the horizontal bar chart
+                top_df = top_df.iloc[::-1]
+
+                nisin_ai = nisin_res["aliphatic_index"]
+                nisin_charge = nisin_res["charge_ph6"]
+                nisin_score = nisin_res.get("as35_score", 41.22)
+
+                ai_delta = ((top_df["aliphatic_index"] - nisin_ai) / nisin_ai) * 100.0
+                charge_delta = ((top_df["charge_ph6"] - nisin_charge) / nisin_charge) * 100.0
+                score_delta = ((top_df["as35_score"] - nisin_score) / nisin_score) * 100.0
+
+                # Formulate concise high-density Y-axis labels
+                cand_labels = [
+                    f"<b>#{top_n - idx}</b> · AS35: {row['as35_score']:.1f}"
+                    for idx, row in enumerate(top_df.to_dict('records'))
+                ]
+                
+                custom_metadata = top_df[["id", "as35_score", "aliphatic_index", "charge_ph6"]].values
+
+                fig_delta = go.Figure()
+
+                # 1. Delta Thermal Stability (AI)
+                fig_delta.add_trace(go.Bar(
+                    y=cand_labels,
+                    x=ai_delta,
+                    name=t["delta_trace_ai"],
+                    orientation='h',
+                    marker=dict(color="#0E8388", line=dict(width=1, color="rgba(255,255,255,0.4)")),
+                    customdata=custom_metadata,
+                    hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_ai"] + ": <b>+%{x:.1f}%</b> vs Nisin A (AI: %{customdata[2]:.1f})<extra></extra>"
                 ))
 
-            fig_scatter.update_layout(**get_base_chart_layout(height=420))
-            fig_scatter.update_xaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)", zeroline=False)
-            fig_scatter.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)", zeroline=False)
-            st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
+                # 2. Delta Antibacterial Charge (pH 6)
+                fig_delta.add_trace(go.Bar(
+                    y=cand_labels,
+                    x=charge_delta,
+                    name=t["delta_trace_charge"],
+                    orientation='h',
+                    marker=dict(color="#0284C7", line=dict(width=1, color="rgba(255,255,255,0.4)")),
+                    customdata=custom_metadata,
+                    hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_charge"] + ": <b>+%{x:.1f}%</b> vs Nisin A (Q: %{customdata[3]:+.2f})<extra></extra>"
+                ))
 
-            # 2. Funnel logic & Audit Caption
-            if total_screened > 0:
-                all_fail_lists = df_raw["failed_reasons"].tolist()
-                
-                def count_cumulative(*reasons):
-                    return sum(1 for r in all_fail_lists if not isinstance(r, list) or not any(sub in item for sub in reasons for item in r))
+                # 3. Delta Preservation Score (AS-35)
+                fig_delta.add_trace(go.Bar(
+                    y=cand_labels,
+                    x=score_delta,
+                    name=t["delta_trace_score"],
+                    orientation='h',
+                    marker=dict(color="#D97706", line=dict(width=1, color="rgba(255,255,255,0.4)")),
+                    customdata=custom_metadata,
+                    hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_score"] + ": <b>+%{x:.1f}%</b> vs Nisin A (Skor: %{customdata[1]:.1f})<extra></extra>"
+                ))
 
-                funnel_nums = [
-                    total_screened,
-                    count_cumulative("Charge @ pH 6.0"),
-                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index"),
-                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index"),
-                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point"),
-                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio"),
-                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio", "Boman Index"),
-                    int((df_raw["passed_all_filters"] == True).sum())
-                ]
-                
-                funnel_stages = [
-                    t["funnel_crit_total"],
-                    t["funnel_crit_charge"],
-                    t["funnel_crit_ai"],
-                    t["funnel_crit_ii"],
-                    t["funnel_crit_pi"],
-                    t["funnel_crit_hydro"],
-                    t["funnel_crit_boman"],
-                    t["funnel_crit_passed"]
-                ]
-                
-                # Find biggest drop
-                drops = [funnel_nums[i] - funnel_nums[i+1] for i in range(len(funnel_nums)-1)]
-                max_drop_idx = drops.index(max(drops)) if drops else 0
-                biggest_drop_reason = funnel_stages[max_drop_idx + 1]
-                
-                audit_text = t["audit_caption"].format(
-                    total=f"{total_screened:,}",
-                    passed=f"{total_passed:,}",
-                    rate=pass_rate,
-                    biggest_drop_reason=biggest_drop_reason
+                # Baseline Zero Line for Nisin A
+                fig_delta.add_vline(
+                    x=0.0,
+                    line_dash="dash",
+                    line_color=C["danger"],
+                    line_width=1.5,
+                    annotation_text=f"<b>{t['delta_nisin_label']}</b>",
+                    annotation_position="top left",
+                    annotation_font=dict(color=C["danger"], size=10.5, family=TYPO["font_family"])
                 )
-                st.caption(audit_text)
-                
-                # 3. Funnel Expander
-                with st.expander(t["funnel_expander_title"]):
-                    funnel_data = dict(number=funnel_nums, stage=funnel_stages)
-                    fig_funnel = px.funnel(
-                        funnel_data,
-                        y="stage",
-                        x="number",
-                        color_discrete_sequence=["#0E8388"]
+
+                delta_layout = get_base_chart_layout(height=400)
+                delta_layout["barmode"] = "group"
+                delta_layout["bargap"] = 0.24
+                delta_layout["bargroupgap"] = 0.08
+                delta_layout["margin"] = dict(l=10, r=15, t=10, b=10)
+                delta_layout["xaxis"]["title"] = t["delta_x_axis"]
+                delta_layout["xaxis"]["ticksuffix"] = "%"
+                delta_layout["xaxis"]["zeroline"] = True
+                delta_layout["xaxis"]["zerolinecolor"] = C["danger"]
+                delta_layout["yaxis"]["tickfont"] = dict(size=11, color=C["neutral_700"], family=TYPO["font_family"])
+                delta_layout["legend"] = dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                    font=dict(size=10.5, family=TYPO["font_family"])
+                )
+                fig_delta.update_layout(**delta_layout)
+
+                st.plotly_chart(fig_delta, use_container_width=True, config={'displayModeBar': False})
+
+        with col_right:
+            if total_passed > 0:
+                # 2. Funnel logic & Audit Caption
+                if total_screened > 0:
+                    all_fail_lists = df_raw["failed_reasons"].tolist()
+                    
+                    def count_cumulative(*reasons):
+                        survivors = 0
+                        for r in all_fail_lists:
+                            if hasattr(r, 'tolist'):
+                                r_list = r.tolist()
+                            else:
+                                try:
+                                    r_list = list(r)
+                                except:
+                                    r_list = [str(r)]
+                                    
+                            failed = False
+                            for sub in reasons:
+                                if any(sub in str(item) for item in r_list):
+                                    failed = True
+                                    break
+                            
+                            if not failed:
+                                survivors += 1
+                        return survivors
+
+                    # Proper sequential accumulation including length & validity
+                    funnel_nums = [
+                        total_screened,
+                        count_cumulative("Invalid sequence", "Length out of bounds"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio", "Boman Index"),
+                        int((df_raw["passed_all_filters"] == True).sum())
+                    ]
+                    
+                    funnel_stages = [
+                        t["funnel_crit_total"],
+                        t["funnel_crit_valid"],
+                        t["funnel_crit_charge"],
+                        t["funnel_crit_ai"],
+                        t["funnel_crit_ii"],
+                        t["funnel_crit_pi"],
+                        t["funnel_crit_hydro"],
+                        t["funnel_crit_boman"],
+                        t["funnel_crit_passed"]
+                    ]
+                    
+                    # Find biggest drop
+                    drops = [funnel_nums[i] - funnel_nums[i+1] for i in range(len(funnel_nums)-1)]
+                    max_drop_idx = drops.index(max(drops)) if drops else 0
+                    biggest_drop_reason = funnel_stages[max_drop_idx + 1]
+                    
+                    # Passed should reflect the final stage of funnel (or actual True count)
+                    actual_passed = funnel_nums[-1]
+                    
+                    # 3. Interactive Plotly Downward Funnel Chart with Card Header
+                    st.markdown(
+                        render_chart_header(t["panel_funnel_tag"], t["funnel_expander_title"], t["panel_funnel_badge"]),
+                        unsafe_allow_html=True
                     )
-                    funnel_layout = get_base_chart_layout(height=410, margin=dict(l=10, r=10, t=10, b=10))
-                    funnel_layout["yaxis"] = dict(title="", tickfont=dict(size=10, family=TYPO["font_family"]))
+
+                    fig_funnel = go.Figure(go.Funnel(
+                        y=funnel_stages,
+                        x=funnel_nums,
+                        textposition="auto",
+                        textinfo="value+percent initial",
+                        opacity=0.92,
+                        marker=dict(
+                            color=[
+                                "#0F172A",
+                                "#1E293B",
+                                "#0F766E",
+                                "#0D9488",
+                                "#0E8388",
+                                "#06B6D4",
+                                "#0EA5E9",
+                                "#38BDF8",
+                                "#10B981"
+                            ],
+                            line=dict(width=1.2, color="#FFFFFF")
+                        ),
+                        connector=dict(
+                            line=dict(color="rgba(14, 131, 136, 0.4)", width=1),
+                            fillcolor="rgba(14, 131, 136, 0.08)"
+                        ),
+                        hovertemplate="<b>%{y}</b><br>Kandidat Lolos: <b>%{x:,}</b><br>% dari Total Awal: <b>%{percentInitial:.1%}</b><br>% dari Tahap Lalu: <b>%{percentPrevious:.1%}</b><extra></extra>" if lang_key == "id" else "<b>%{y}</b><br>Surviving Candidates: <b>%{x:,}</b><br>% of Initial: <b>%{percentInitial:.1%}</b><br>% of Previous: <b>%{percentPrevious:.1%}</b><extra></extra>"
+                    ))
+
+                    funnel_layout = get_base_chart_layout(height=400)
+                    funnel_layout["margin"] = dict(l=10, r=10, t=10, b=10)
+                    funnel_layout["yaxis"]["tickfont"] = dict(size=11, color=C["neutral_700"], family=TYPO["font_family"])
+                    funnel_layout["xaxis"]["showgrid"] = False
+                    funnel_layout["yaxis"]["showgrid"] = False
                     fig_funnel.update_layout(**funnel_layout)
-                    st.plotly_chart(fig_funnel, use_container_width=True)
 
+                    st.plotly_chart(fig_funnel, use_container_width=True, config={'displayModeBar': False})
 
+                    audit_text = t["audit_caption"].format(
+                        total=f"{total_screened:,}",
+                        passed=f"{actual_passed:,}",
+                        rate=(actual_passed / total_screened * 100) if total_screened else 0.0,
+                        biggest_drop_reason=biggest_drop_reason
+                    )
+                    st.caption(audit_text)
 
     # ==========================================================================
     # TAB 2: 3D STRUCTURE & TITRATION CURVES
     # ==========================================================================
     with tab2:
-        st.subheader(f"{t['cand_profile']}: {selected_candidate['id']}")
+        cand_id = html.escape(str(selected_candidate['id']))
+        cand_seq = html.escape(str(selected_candidate['sequence']))
+        cand_score = selected_candidate.get('as35_score', 0.0)
+        cand_ai = selected_candidate.get('aliphatic_index', 0.0)
+        cand_q = selected_candidate.get('charge_ph6', 0.0)
+        cand_ii = selected_candidate.get('instability_index', 0.0)
+        cand_len = len(selected_candidate['sequence'])
+        cand_source = selected_candidate.get('source', 'Genomic')
+
+        # 1. Target Candidate Showcase Banner
+        st.markdown(
+            f"""
+            <div class="target-hero-card">
+                <div class="target-hero-info">
+                    <div class="target-hero-tag">{t['target_hero_tag']}</div>
+                    <div class="target-hero-id">{cand_id}</div>
+                </div>
+                <div class="target-hero-pills">
+                    <div class="target-stat-pill">AliphaScore-35: <strong>{cand_score:.1f}</strong></div>
+                    <div class="target-stat-pill">AI (Termal): <strong>{cand_ai:.1f}</strong></div>
+                    <div class="target-stat-pill">Net Charge pH 6: <strong>{cand_q:+.2f}</strong></div>
+                    <div class="target-stat-pill">Instability Index: <strong>{cand_ii:.1f}</strong></div>
+                    <div class="target-stat-pill">{cand_len} AA · {cand_source}</div>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
-        # Primary sequence box
-        st.caption(t["primary_seq"])
-        safe_seq = html.escape(str(selected_candidate['sequence']))
-        st.markdown(f'<div class="seq-box">{safe_seq}</div>', unsafe_allow_html=True)
-        st.markdown("<div style='height: 14px;'></div>", unsafe_allow_html=True)
+        # 2. Primary Sequence Box
+        st.markdown(
+            f"""
+            <div style='margin-bottom: 18px;'>
+                <div style='font-size: 11px; font-weight: 700; color: #475569; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 5px;'>{t["primary_seq"]}</div>
+                <div class="seq-box">{cand_seq}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        col_titr, col_3d = st.columns([1.1, 1.1])
+        col_titr, col_3d = st.columns([1.1, 1.1], gap="large")
 
-        # Henderson-Hasselbalch Titration Curve
+        # 3. Henderson-Hasselbalch Titration Curve
         with col_titr:
-            st.subheader(t["titr_title"])
+            st.markdown(
+                render_chart_header(t["panel_titr_tag"], t["titr_title"], t["panel_titr_badge"]),
+                unsafe_allow_html=True
+            )
             ph_range = np.linspace(0, 14, 141)
             cand_charges = [calculate_net_charge(selected_candidate['sequence'], float(ph)) for ph in ph_range]
             nisin_charges = [calculate_net_charge(NISIN_A_SEQUENCE, float(ph)) for ph in ph_range]
@@ -582,45 +715,61 @@ def main():
             fig_titr.add_trace(go.Scatter(
                 x=ph_range, y=cand_charges,
                 mode="lines",
-                name=f"{selected_candidate['id'][:20]}...",
-                line=dict(color=C["primary"], width=3)
+                name=f"{selected_candidate['id'][:18]}...",
+                line=dict(color="#0E8388", width=3.5),
+                hovertemplate="<b>Kandidat Terpilih</b><br>pH: %{x:.1f}<br>Net Charge: <b>%{y:+.2f}</b><extra></extra>" if lang_key == "id" else "<b>Selected Target</b><br>pH: %{x:.1f}<br>Net Charge: <b>%{y:+.2f}</b><extra></extra>"
             ))
             fig_titr.add_trace(go.Scatter(
                 x=ph_range, y=nisin_charges,
                 mode="lines",
-                name="Nisin A Control",
-                line=dict(color=C["danger"], width=2, dash="dash")
+                name="Nisin A Control (E234)",
+                line=dict(color=C["danger"], width=2, dash="dash"),
+                hovertemplate="<b>Nisin A Baseline</b><br>pH: %{x:.1f}<br>Net Charge: <b>%{y:+.2f}</b><extra></extra>"
             ))
 
             # pH Milestones
-            fig_titr.add_vline(x=4.0, line_dash="dot", line_color=C["warning"], annotation_text="pH 4.0", annotation_position="top left")
-            fig_titr.add_vline(x=6.0, line_dash="dot", line_color=C["primary"], annotation_text="pH 6.0", annotation_position="top left")
-            fig_titr.add_vline(x=7.4, line_dash="dot", line_color=C["neutral_400"], annotation_text="pH 7.4", annotation_position="top right")
-            fig_titr.add_hline(y=0.0, line_color=C["neutral_200"], line_width=1)
+            fig_titr.add_vline(x=4.0, line_dash="dot", line_color="#D97706", line_width=1.5, annotation_text="<b>pH 4.0</b> (Asam)" if lang_key == "id" else "<b>pH 4.0</b> (Acid)", annotation_position="top left", annotation_font=dict(size=10, color="#D97706"))
+            fig_titr.add_vline(x=6.0, line_dash="dot", line_color="#0E8388", line_width=1.5, annotation_text="<b>pH 6.0</b> (Pangan)" if lang_key == "id" else "<b>pH 6.0</b> (Food)", annotation_position="top left", annotation_font=dict(size=10, color="#0E8388"))
+            fig_titr.add_vline(x=7.4, line_dash="dot", line_color="#64748B", line_width=1.5, annotation_text="<b>pH 7.4</b> (Netral)" if lang_key == "id" else "<b>pH 7.4</b> (Neutral)", annotation_position="top right", annotation_font=dict(size=10, color="#64748B"))
+            fig_titr.add_hline(y=0.0, line_color="#CBD5E1", line_width=1)
 
             titr_layout = get_base_chart_layout(height=380)
-            titr_layout["xaxis"]["title"] = "Environmental pH"
+            titr_layout["margin"] = dict(l=10, r=10, t=10, b=10)
+            titr_layout["xaxis"]["title"] = "Environmental pH (0 - 14)"
             titr_layout["yaxis"]["title"] = "Net Electrical Charge (z)"
-            titr_layout["legend"] = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            titr_layout["legend"] = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, font=dict(size=10.5, family=TYPO["font_family"]))
             fig_titr.update_layout(**titr_layout)
-            st.plotly_chart(fig_titr, use_container_width=True)
+            st.plotly_chart(fig_titr, use_container_width=True, config={'displayModeBar': False})
 
-        # 3D Molecular Viewport
+        # 4. 3D Molecular Viewport
         with col_3d:
-            st.subheader(t["mol_title"])
             pdb_str, model_source = fetch_peptide_3d_pdb(selected_candidate['sequence'])
-            st.caption(f"Model: **{model_source}** | {t['mol_caption']}")
-            html_3d = build_3dmol_html(pdb_str, height=340, primary_color=C["primary"], hydrophobic_color=C["amber"])
-            components.html(html_3d, height=350)
+            badge_source = f"Model: {model_source}"
+            st.markdown(
+                render_chart_header(t["panel_mol_tag"], t["mol_title"], badge_source),
+                unsafe_allow_html=True
+            )
+            html_3d = build_3dmol_html(pdb_str, height=330, primary_color="#0E8388", hydrophobic_color="#D97706")
+            components.html(html_3d, height=340)
+            st.caption(t['mol_caption'])
 
     # ==========================================================================
     # TAB 3: EXPORT & OFFICIAL R&D DOSSIER
     # ==========================================================================
     with tab3:
-        st.subheader(t["table_title"])
+        # 1. Export & Governance Hero Banner
+        st.markdown(
+            f"""
+            <div class="export-hero-banner">
+                <div class="export-hero-title">{t['dossier_box_title']}</div>
+                <div class="export-hero-desc">{t['dossier_box_desc']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         
-        # Summary & Export Buttons
-        col_btn1, col_btn2 = st.columns([1, 1])
+        # 2. Action Download Buttons
+        col_btn1, col_btn2 = st.columns([1, 1], gap="medium")
         
         with col_btn1:
             csv_data = filtered_df.to_csv(index=False).encode('utf-8')
@@ -651,13 +800,21 @@ def main():
             st.download_button(
                 label=t["btn_pdf"],
                 data=pdf_bytes,
-                file_name=f"AMP_Report_{selected_candidate['id'][:25]}.pdf",
+                file_name=f"AMP_Dossier_{selected_candidate['id'][:25]}.pdf",
                 mime="application/pdf",
                 use_container_width=True,
                 key="tab3_pdf_download"
             )
 
-        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 18px;'></div>", unsafe_allow_html=True)
+        
+        # 3. Database Table Header & Interactive Table
+        passed_count_str = f"{len(filtered_df):,} " + ("Kandidat" if lang_key == "id" else "Candidates")
+        st.markdown(
+            render_chart_header(t["panel_table_tag"], t["table_title"], passed_count_str),
+            unsafe_allow_html=True
+        )
+        
         display_df = filtered_df[[
             "id", "source", "length", "charge_ph6", "isoelectric_point",
             "aliphatic_index", "instability_index", "hydrophobic_ratio",
@@ -691,7 +848,6 @@ def main():
         mapping = column_mapping_id if lang_key == "id" else column_mapping_en
         display_df = display_df.rename(columns=mapping)
         st.dataframe(display_df, use_container_width=True, height=380)
-
 
 if __name__ == "__main__":
     main()
