@@ -501,7 +501,7 @@ def main():
                     hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_charge"] + ": <b>+%{x:.1f}%</b> vs Nisin A (Q: %{customdata[3]:+.2f})<extra></extra>"
                 ))
 
-                # 3. Delta Preservation Score (AS-35)
+                score_str = "Skor" if lang_key == "id" else "Score"
                 fig_delta.add_trace(go.Bar(
                     y=cand_labels,
                     x=score_delta,
@@ -509,7 +509,7 @@ def main():
                     orientation='h',
                     marker=dict(color="#D97706", line=dict(width=1, color="rgba(255,255,255,0.4)")),
                     customdata=custom_metadata,
-                    hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_score"] + ": <b>+%{x:.1f}%</b> vs Nisin A (Skor: %{customdata[1]:.1f})<extra></extra>"
+                    hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_score"] + f": <b>+%{x:.1f}%</b> vs Nisin A ({score_str}: %{{customdata[1]:.1f}})<extra></extra>"
                 ))
 
                 # Baseline Zero Line for Nisin A
@@ -667,6 +667,7 @@ def main():
         cand_ii = selected_candidate.get('instability_index', 0.0)
         cand_len = len(selected_candidate['sequence'])
         cand_source = selected_candidate.get('source', 'Genomic')
+        ai_stat_label = "AI (Termal)" if lang_key == "id" else "AI (Thermal)"
 
         # 1. Target Candidate Showcase Banner
         st.markdown(
@@ -678,7 +679,7 @@ def main():
                 </div>
                 <div class="target-hero-pills">
                     <div class="target-stat-pill">AliphaScore-35: <strong>{cand_score:.1f}</strong></div>
-                    <div class="target-stat-pill">AI (Termal): <strong>{cand_ai:.1f}</strong></div>
+                    <div class="target-stat-pill">{ai_stat_label}: <strong>{cand_ai:.1f}</strong></div>
                     <div class="target-stat-pill">Net Charge pH 6: <strong>{cand_q:+.2f}</strong></div>
                     <div class="target-stat-pill">Instability Index: <strong>{cand_ii:.1f}</strong></div>
                     <div class="target-stat-pill">{cand_len} AA · {cand_source}</div>

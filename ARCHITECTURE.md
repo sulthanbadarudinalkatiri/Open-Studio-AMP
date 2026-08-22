@@ -1,38 +1,38 @@
-﻿# System Architecture & Data Schema Â· Open Studio AMP
+# System Architecture & Data Schema · Open Studio AMP
 
 ## 1. Decoupled Repository Folder Structure
 
 ```text
 open-studio-amp/
-â”œâ”€â”€ data/
-â”‚   â”œâ”€â”€ raw/                 # Raw genomes (.faa, .fna) - Local cache & fallback
-â”‚   â””â”€â”€ processed/           # Screening outputs (.csv) & Comparative reports (.md)
-â”œâ”€â”€ src/
-â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”œâ”€â”€ fetcher.py           # NCBI Entrez API downloader + SHA256 integrity + Cache fallback
-â”‚   â”œâ”€â”€ extractor.py         # Phase 1 (CDS) & Phase 2 (6-frame sORF tri-start) extractor
-â”‚   â”œâ”€â”€ filters.py           # Physicochemical calculation engine, scoring & biopreservation narratives
-â”‚   â”œâ”€â”€ theme.py             # Single Source of Truth (SSoT) tokens, CSS & bilingual UX microcopy
-â”‚   â”œâ”€â”€ structure.py         # 3D molecular coordinates generator & 3Dmol.js rendering
-â”‚   â””â”€â”€ reporter.py          # Academic monochrome PDF dossier generator (FPDF2)
-â”œâ”€â”€ tests/
-â”‚   â”œâ”€â”€ __init__.py
-â”‚   â”œâ”€â”€ test_biochem.py              # Unit tests for positive/negative controls & biochemical formulas
-â”‚   â”œâ”€â”€ test_extraction.py           # Unit tests for fetcher, sha256 & 6-frame extraction
-â”‚   â”œâ”€â”€ test_custom_ingestion.py     # Unit tests for in-memory FASTA parsing & sequence detection
-â”‚   â”œâ”€â”€ test_modular_architecture.py # Unit tests for modular decoupling & I18N parity
-â”‚   â”œâ”€â”€ test_ui_sorting_search.py    # Unit tests for sorting, motif search & smart label formatting
-â”‚   â”œâ”€â”€ test_parity_fastpath.py      # Unit tests for optimized O(N) evaluation vs reference parity
-â”‚   â”œâ”€â”€ test_security.py             # Unit tests for XSS prevention and payload sanitation
-â”‚   â””â”€â”€ local_controls.py            # Suite for local food bioactive peptide expansion
-â”œâ”€â”€ app.py                   # Streamlit interactive web studio controller
-â”œâ”€â”€ engine.py                # CLI pipeline orchestrator & Case study generator
-â”œâ”€â”€ requirements.txt         # Python library dependencies
-â”œâ”€â”€ PRD.md                   # Product requirements
-â”œâ”€â”€ CONTRIBUTING.md          # Guidelines for contributing & CI/CD standards
-â”œâ”€â”€ METHODOLOGY.md           # Biochemical mathematical formulas
-â”œâ”€â”€ ARCHITECTURE.md          # System architecture & data contracts
-â””â”€â”€ README.md                # Main project documentation
+├── data/
+│   ├── raw/                 # Raw genomes (.faa, .fna) - Local cache & fallback
+│   └── processed/           # Screening outputs (.csv) & Comparative reports (.md)
+├── src/
+│   ├── __init__.py
+│   ├── fetcher.py           # NCBI Entrez API downloader + SHA256 integrity + Cache fallback
+│   ├── extractor.py         # Phase 1 (CDS) & Phase 2 (6-frame sORF tri-start) extractor
+│   ├── filters.py           # Physicochemical calculation engine, scoring & biopreservation narratives
+│   ├── theme.py             # Single Source of Truth (SSoT) tokens, CSS & bilingual UX microcopy
+│   ├── structure.py         # 3D molecular coordinates generator & 3Dmol.js rendering
+│   └── reporter.py          # Academic monochrome PDF dossier generator (FPDF2)
+├── tests/
+│   ├── __init__.py
+│   ├── test_biochem.py              # Unit tests for positive/negative controls & biochemical formulas
+│   ├── test_extraction.py           # Unit tests for fetcher, sha256 & 6-frame extraction
+│   ├── test_custom_ingestion.py     # Unit tests for in-memory FASTA parsing & sequence detection
+│   ├── test_modular_architecture.py # Unit tests for modular decoupling & I18N parity
+│   ├── test_ui_sorting_search.py    # Unit tests for sorting, motif search & smart label formatting
+│   ├── test_parity_fastpath.py      # Unit tests for optimized O(N) evaluation vs reference parity
+│   ├── test_security.py             # Unit tests for XSS prevention and payload sanitation
+│   └── local_controls.py            # Suite for local food bioactive peptide expansion
+├── app.py                   # Streamlit interactive web studio controller
+├── engine.py                # CLI pipeline orchestrator & Case study generator
+├── requirements.txt         # Python library dependencies
+├── PRD.md                   # Product requirements
+├── CONTRIBUTING.md          # Guidelines for contributing & CI/CD standards
+├── METHODOLOGY.md           # Biochemical mathematical formulas
+├── ARCHITECTURE.md          # System architecture & data contracts
+└── README.md                # Main project documentation
 ```
 
 ---
@@ -42,48 +42,48 @@ open-studio-amp/
 ```mermaid
 flowchart TD
     %% INGESTION LAYER
-    subgraph INGESTION ["ðŸ“¥ 1. Data Ingestion & Genome Input"]
+    subgraph INGESTION ["📥 1. Data Ingestion & Genome Input"]
         direction TB
-        A1["ðŸ§¬ NCBI BioProject PRJDB8096<br/>(G. thermocatenulatus PLS47)"]:::inputStyle
-        A2["ðŸ“‚ Custom Genome FASTA<br/>(.faa / .fna / .fasta / Manual Paste)"]:::inputStyle
-        B["ðŸ›¡ï¸ Genome Ingestion & Cache Engine<br/>(src/fetcher.py â€¢ SHA256 Cryptographic Checksum)"]:::cacheStyle
+        A1["🧬 NCBI BioProject PRJDB8096<br/>(G. thermocatenulatus PLS47)"]:::inputStyle
+        A2["📂 Custom Genome FASTA<br/>(.faa / .fna / .fasta / Manual Paste)"]:::inputStyle
+        B["🛡️ Genome Ingestion & Cache Engine<br/>(src/fetcher.py • SHA256 Cryptographic Checksum)"]:::cacheStyle
         A1 --> B
         A2 --> B
     end
 
     %% EXTRACTION LAYER
-    subgraph EXTRACTION ["âš™ï¸ 2. Dual-Phase Sequence Extraction (src/extractor.py)"]
+    subgraph EXTRACTION ["⚙️ 2. Dual-Phase Sequence Extraction (src/extractor.py)"]
         direction TB
-        B --> C1["ðŸ§ª Phase 1: Annotated CDS<br/>(Short Coding Sequences: .faa)"]:::extractStyle
-        B --> C2["ðŸ”¬ Phase 2: Cryptic sORFs<br/>(6-Frame Translation: .fna â€¢ Tri-Start ATG/GTG/TTG)"]:::sorfStyle
+        B --> C1["🧪 Phase 1: Annotated CDS<br/>(Short Coding Sequences: .faa)"]:::extractStyle
+        B --> C2["🔬 Phase 2: Cryptic sORFs<br/>(6-Frame Translation: .fna • Tri-Start ATG/GTG/TTG)"]:::sorfStyle
     end
 
     %% FILTERING LAYER
-    subgraph FILTERING ["ðŸ§ª 3. Tropical Food Filter Matrix (7 Parameters) (src/filters.py)"]
+    subgraph FILTERING ["🧪 3. Tropical Food Filter Matrix (7 Parameters) (src/filters.py)"]
         direction TB
-        C1 & C2 --> D["âš¡ Physicochemical Calculation Engine"]:::calcStyle
-        D --> F1["1ï¸âƒ£ Charge @ pH 6.0 &ge; +2.0<br/>(Bacterial Wall Penetration)"]:::filterStyle
-        D --> F2["2ï¸âƒ£ Isoelectric Point pI &ge; 8.4<br/>(Prevents Food Precipitation)"]:::filterStyle
-        D --> F3["3ï¸âƒ£ Aliphatic Index &ge; 60.0<br/>(Tropical Heat Resistance â€¢ Gold &ge; 80)"]:::filterStyle
-        D --> F4["4ï¸âƒ£ Instability Index &lt; 40.0<br/>(Shelf-life Stability)"]:::filterStyle
-        D --> F5["5ï¸âƒ£ Hydrophobic Ratio 30-55%<br/>(Cell Membrane Insertion)"]:::filterStyle
-        D --> F6["6ï¸âƒ£ Boman Index 0-2.5 kcal/mol<br/>(Host Cell Safety)"]:::filterStyle
-        D --> F7["7ï¸âƒ£ Sequence Length 5-100 aa<br/>(SPPS Synthesis Efficiency)"]:::filterStyle
+        C1 & C2 --> D["⚡ Physicochemical Calculation Engine"]:::calcStyle
+        D --> F1["1️⃣ Charge @ pH 6.0 &ge; +2.0<br/>(Bacterial Wall Penetration)"]:::filterStyle
+        D --> F2["2️⃣ Isoelectric Point pI &ge; 8.4<br/>(Prevents Food Precipitation)"]:::filterStyle
+        D --> F3["3️⃣ Aliphatic Index &ge; 60.0<br/>(Tropical Heat Resistance • Gold &ge; 80)"]:::filterStyle
+        D --> F4["4️⃣ Instability Index &lt; 40.0<br/>(Shelf-life Stability)"]:::filterStyle
+        D --> F5["5️⃣ Hydrophobic Ratio 30-55%<br/>(Cell Membrane Insertion)"]:::filterStyle
+        D --> F6["6️⃣ Boman Index 0-2.5 kcal/mol<br/>(Host Cell Safety)"]:::filterStyle
+        D --> F7["7️⃣ Sequence Length 5-100 aa<br/>(SPPS Synthesis Efficiency)"]:::filterStyle
     end
 
     %% SCORING LAYER
-    subgraph SCORING ["ðŸ† 4. Preservation Evaluation & Ranking"]
+    subgraph SCORING ["🏆 4. Preservation Evaluation & Ranking"]
         direction TB
-        F1 & F2 & F3 & F4 & F5 & F6 & F7 --> S["ðŸŒŸ AliphaScore-35 (AS-35) Composite Score (0â€“100)<br/>AS-35 = 0.30 S_thermal + 0.25 S_charge + 0.20 S_stability + 0.15 S_hydro + 0.10 S_membrane"]:::scoreStyle
+        F1 & F2 & F3 & F4 & F5 & F6 & F7 --> S["🌟 AliphaScore-35 (AS-35) Composite Score (0–100)<br/>AS-35 = 0.30 S_thermal + 0.25 S_charge + 0.20 S_stability + 0.15 S_hydro + 0.10 S_membrane"]:::scoreStyle
     end
 
     %% OUTPUT LAYER
-    subgraph OUTPUT ["ðŸ“Š 5. Output & Studio Deliverables"]
+    subgraph OUTPUT ["📊 5. Output & Studio Deliverables"]
         direction TB
-        S --> O1["ðŸ“ CSV Database & Case Study<br/>(data/processed/ â€¢ engine.py)"]:::csvStyle
-        S --> O2["ðŸ–¥ï¸ Open Studio AMP Dashboard<br/>(Streamlit Web UI â€¢ app.py)"]:::uiStyle
-        S --> O3["ðŸ§¬ 3D Molecular Visualization<br/>(Interactive 3Dmol.js â€¢ src/structure.py)"]:::molStyle
-        S --> O4["ðŸ“„ Academic PDF Dossier<br/>(2-Page Monochrome Report â€¢ src/reporter.py)"]:::pdfStyle
+        S --> O1["📁 CSV Database & Case Study<br/>(data/processed/ • engine.py)"]:::csvStyle
+        S --> O2["🖥️ Open Studio AMP Dashboard<br/>(Streamlit Web UI • app.py)"]:::uiStyle
+        S --> O3["🧬 3D Molecular Visualization<br/>(Interactive 3Dmol.js • src/structure.py)"]:::molStyle
+        S --> O4["📄 Academic PDF Dossier<br/>(2-Page Monochrome Report • src/reporter.py)"]:::pdfStyle
     end
 
     %% CLASS DEFINITIONS & COLOR THEMES
@@ -123,4 +123,3 @@ flowchart TD
     "passed_all_filters": true                    // True if it passes all 7 food criteria
 }
 ```
-
