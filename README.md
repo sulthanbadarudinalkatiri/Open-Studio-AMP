@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.11%2B-0A192F?style=for-the-badge&logo=python&logoColor=38BDF8" alt="Python 3.11+" /></a>
   <a href="https://streamlit.io/"><img src="https://img.shields.io/badge/Studio_UI-Streamlit_1.32+-0E8388?style=for-the-badge&logo=streamlit&logoColor=white" alt="Streamlit Studio" /></a>
-  <a href="https://pytest.org/"><img src="https://img.shields.io/badge/Tests-59%2F59_Passed_(100%25)-10B981?style=for-the-badge&logo=pytest&logoColor=white" alt="Unit Tests" /></a>
+  <a href="https://pytest.org/"><img src="https://img.shields.io/badge/Tests-64%2F64_Passed_(100%25)-10B981?style=for-the-badge&logo=pytest&logoColor=white" alt="Unit Tests" /></a>
   <a href="https://www.ncbi.nlm.nih.gov/bioproject/PRJDB8096"><img src="https://img.shields.io/badge/NCBI_Dataset-PRJDB8096-172A45?style=for-the-badge&logo=dna&logoColor=0E8388" alt="NCBI BioProject" /></a>
   <a href="https://www.ncbi.nlm.nih.gov/bioproject/PRJDB8096"><img src="https://img.shields.io/badge/Origin-Indonesian_Soil_Thermophile-D97706?style=for-the-badge&logo=target&logoColor=white" alt="Target Organism" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT_Open_Science-2E4F4F?style=for-the-badge&logo=opensourceinitiative&logoColor=white" alt="MIT License" /></a>
@@ -153,7 +153,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Run Unit Testing Suite (59 Tests - 100% Green)
+### 3. Run Unit Testing Suite (64 Tests - 100% Green)
 ```bash
 python -m pytest -v
 ```

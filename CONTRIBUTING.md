@@ -33,7 +33,7 @@ source venv/bin/activate     # Linux/macOS
 # 3. Install dependencies
 pip install -r requirements.txt
 
-# 4. Verify the test suite passes (59/59)
+# 4. Verify the test suite passes (64/64)
 python -m pytest -v
 ```
 

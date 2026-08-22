@@ -5,6 +5,7 @@ Module: tests/test_ui_sorting_search.py
 
 import pytest
 import pandas as pd
+from src.theme import build_smart_label
 
 
 @pytest.fixture
@@ -115,13 +116,6 @@ class TestMotifAndIdSearchLogic:
 
 class TestSmartLabelFormatting:
     def test_build_smart_label_format(self, sample_candidates_df):
-        def build_smart_label(row: pd.Series) -> str:
-            score = row.get("as35_score", 0.0)
-            ai = row.get("aliphatic_index", 0.0)
-            charge = row.get("charge_ph6", 0.0)
-            cid = row.get("id", "Unknown")
-            return f"[{score:.1f} | AI:{ai:.0f} | Q:{charge:+.1f}] {cid}"
-
         label = build_smart_label(sample_candidates_df.iloc[0])
         assert "[85.4 | AI:120 | Q:+3.2]" in label
         assert "PLS47_sORF_F+1_100_200_fwd_33aa" in label

@@ -39,7 +39,7 @@ A bioinformatics R&D tool specializing in tropical food biopreservation. It filt
 * **AliphaScore-35 (AS-35) Composite Scoring:** Ranks top candidates (0–100 scale).
 * **Interactive Web Studio:** Streamlit dashboard featuring Henderson-Hasselbalch titration curves, 3D molecular visualization (`3Dmol.js`), and CSV data exports.
 * **Academic PDF Dossier Generator:** Exports formal 2-page monochrome A4 reports with dynamic biopreservation narratives and experimental follow-up matrices.
-* **Validation Suite:** 59 unit tests based on positive controls, negative controls, local foods, and architectural integrity.
+* **Validation Suite:** 64 unit tests based on positive controls, negative controls, local foods, and architectural integrity.
 
 ---
 
@@ -57,7 +57,7 @@ A bioinformatics R&D tool specializing in tropical food biopreservation. It filt
 
 ---
 
-## 6. Validation Controls (59 Unit Tests Benchmark)
+## 6. Validation Controls (64 Unit Tests Benchmark)
 
 | Category | Peptide Control | Key Characteristics | Food Filter Status |
 | :--- | :--- | :--- | :---: |

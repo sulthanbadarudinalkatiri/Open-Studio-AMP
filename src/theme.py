@@ -328,6 +328,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "uploader_label": "Pilih berkas sekuens (.faa, .fna, .fasta, .txt) bisa lebih dari satu:",
         "paste_label": "Tempel sekuens FASTA di sini (Contoh: >ID\nSEKUENS):",
         "custom_success": "✅ Berhasil memproses {n} kandidat peptida dari {name}.",
+        "upload_too_large": "⚠️ File {name} berukuran lebih dari 10 MB ({size:.1f} MB) dan akan dilewati untuk menjaga performa.",
         "custom_empty": "⚠️ Tidak ditemukan sekuens valid. Menampilkan dataset acuan PLS47.",
         "spinner_db": "Membangun database dari genom G. thermocatenulatus PLS47...",
         "spinner_process": "Memproses sekuens...",
@@ -387,8 +388,18 @@ I18N: Dict[str, Dict[str, str]] = {
         "scatter_y": "Daya Penetrasi Dinding Sel (Muatan Bersih @ pH 6.0)",
         "hist_title": "Distribusi Ketahanan Termal (Aliphatic Index)",
         "hist_x": "Aliphatic Index (AI)",
-        "funnel_title": "Funnel Diagnostik Eliminasi (Penyebab Peptida Tereliminasi)",
-        "funnel_crit_total": "Total Peptida Disaring",
+        "funnel_title": "📊 Corong Standar Tropis (Baseline)",
+        "chart_scatter_title_short": "Distribusi Suhu vs Muatan",
+        "tab1_top10_title": "🏆 Top 10 Kandidat Tersaring",
+        "tab1_top10_col_rank": "Peringkat",
+        "tab1_top10_col_id": "ID",
+        "tab1_top10_col_score": "Skor AS-35",
+        "tab1_top10_col_tier": "Kelas Suhu",
+        "tab1_top10_col_len": "Panjang",
+        "tab1_top10_col_reason": "Profil Utama",
+        "funnel_expander_title": "🔎 Lihat Detail Corong Penyaringan",
+        "audit_caption": "Total disaring: {total}, Lolos: {passed} ({rate:.1f}%). Eliminasi terbesar pada tahap: {biggest_drop_reason}.",
+        "funnel_crit_total": "Total Sekuens Awal",
         "funnel_crit_charge": "Gagal Muatan @ pH 6.0 (< +2.0)",
         "funnel_crit_ai": "Gagal Ketahanan Panas (< 60.0)",
         "funnel_crit_ii": "Gagal Stabilitas Larutan (>= 40.0)",
@@ -438,6 +449,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "uploader_label": "Select sequence files (.faa, .fna, .fasta, .txt) multiple allowed:",
         "paste_label": "Paste FASTA formatted sequence here (Example: >ID\nSEQUENCE):",
         "custom_success": "✅ Successfully processed {n} candidate peptides from {name}.",
+        "upload_too_large": "⚠️ File {name} is larger than 10 MB ({size:.1f} MB) and will be skipped to preserve performance.",
         "custom_empty": "⚠️ No valid sequences found in input. Displaying benchmark dataset.",
         "spinner_db": "Generating database from G. thermocatenulatus PLS47 genome...",
         "spinner_process": "Processing sequences...",
@@ -497,8 +509,18 @@ I18N: Dict[str, Dict[str, str]] = {
         "scatter_y": "Bacterial Penetration (Net Charge @ pH 6.0)",
         "hist_title": "Thermal Resistance Distribution (Aliphatic Index)",
         "hist_x": "Aliphatic Index (AI)",
-        "funnel_title": "Elimination Diagnostic Funnel (Why Peptides Were Filtered Out)",
-        "funnel_crit_total": "Total Peptides Screened",
+        "funnel_title": "📊 Tropical Standard Funnel (Baseline)",
+        "chart_scatter_title_short": "Thermal vs Charge Distribution",
+        "tab1_top10_title": "🏆 Top 10 Filtered Candidates",
+        "tab1_top10_col_rank": "Rank",
+        "tab1_top10_col_id": "ID",
+        "tab1_top10_col_score": "AS-35 Score",
+        "tab1_top10_col_tier": "Thermoclass",
+        "tab1_top10_col_len": "Length",
+        "tab1_top10_col_reason": "Key Profile",
+        "funnel_expander_title": "🔎 View Screening Funnel Details",
+        "audit_caption": "Total screened: {total}, Passed: {passed} ({rate:.1f}%). Largest elimination stage: {biggest_drop_reason}.",
+        "funnel_crit_total": "Total Starting Sequences",
         "funnel_crit_charge": "Failed Net Charge @ pH 6.0 (< +2.0)",
         "funnel_crit_ai": "Failed Thermal Resistance (< 60.0)",
         "funnel_crit_ii": "Failed Solution Stability (>= 40.0)",
@@ -529,3 +551,11 @@ I18N: Dict[str, Dict[str, str]] = {
         "empty_state_desc": "Adjust the parameter settings in the left sidebar, or upload your FASTA data if you are in Custom Genome mode."
     }
 }
+
+
+def build_smart_label(row: Any) -> str:
+    score = row.get("as35_score", 0.0)
+    ai = row.get("aliphatic_index", 0.0)
+    charge = row.get("charge_ph6", 0.0)
+    cid = row.get("id", "Unknown")
+    return f"[{score:.1f} | AI:{ai:.0f} | Q:{charge:+.1f}] {cid}"

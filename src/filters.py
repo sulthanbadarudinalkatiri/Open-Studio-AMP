@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Any, Union
+from typing import Dict, List, Optional, Tuple, Any, Union, Callable
 from collections import Counter
+import os
+from concurrent.futures import ProcessPoolExecutor
 
 # ==============================================================================
 # 1. BIOCHEMICAL CONSTANTS & SCALES
@@ -18,6 +20,25 @@ PKA_LEHNINGER: Dict[str, float] = {
     "C": 8.33,   # Cysteine (Thiol)
     "Y": 10.07,  # Tyrosine (Phenol)
 }
+
+# Precomputed ionization constants at module level for O(1) linear charge evaluations
+PKA_POS_RESIDUES = ("R", "K", "H")
+PKA_NEG_RESIDUES = ("D", "E", "C", "Y")
+
+_W_N_TERM_PH4: float = 1.0 / (1.0 + 10.0 ** (4.0 - PKA_LEHNINGER["N_term"]))
+_W_C_TERM_PH4: float = 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER["C_term"] - 4.0))
+_W_POS_PH4: Dict[str, float] = {r: 1.0 / (1.0 + 10.0 ** (4.0 - PKA_LEHNINGER[r])) for r in PKA_POS_RESIDUES}
+_W_NEG_PH4: Dict[str, float] = {r: 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER[r] - 4.0)) for r in PKA_NEG_RESIDUES}
+
+_W_N_TERM_PH6: float = 1.0 / (1.0 + 10.0 ** (6.0 - PKA_LEHNINGER["N_term"]))
+_W_C_TERM_PH6: float = 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER["C_term"] - 6.0))
+_W_POS_PH6: Dict[str, float] = {r: 1.0 / (1.0 + 10.0 ** (6.0 - PKA_LEHNINGER[r])) for r in PKA_POS_RESIDUES}
+_W_NEG_PH6: Dict[str, float] = {r: 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER[r] - 6.0)) for r in PKA_NEG_RESIDUES}
+
+_W_N_TERM_PH74: float = 1.0 / (1.0 + 10.0 ** (7.4 - PKA_LEHNINGER["N_term"]))
+_W_C_TERM_PH74: float = 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER["C_term"] - 7.4))
+_W_POS_PH74: Dict[str, float] = {r: 1.0 / (1.0 + 10.0 ** (7.4 - PKA_LEHNINGER[r])) for r in PKA_POS_RESIDUES}
+_W_NEG_PH74: Dict[str, float] = {r: 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER[r] - 7.4)) for r in PKA_NEG_RESIDUES}
 
 # Kyte-Doolittle Hydropathy Scale (Kyte & Doolittle, 1982) for GRAVY calculation
 KYTE_DOOLITTLE: Dict[str, float] = {
@@ -64,6 +85,11 @@ DIWV_MATRIX: Dict[str, Dict[str, float]] = {
     "V": {"A": 1.00, "C": 1.00, "D": -14.03, "E": 1.00, "F": 1.00, "G": -7.49, "H": 1.00, "I": 1.00, "K": -7.49, "L": 1.00, "M": 1.00, "N": 1.00, "P": 20.26, "Q": 1.00, "R": 1.00, "S": 1.00, "T": 1.00, "V": 1.00, "W": 1.00, "Y": -6.54},
     "W": {"A": -14.03, "C": 1.00, "D": 1.00, "E": 1.00, "F": 1.00, "G": -7.49, "H": 1.00, "I": 1.00, "K": 1.00, "L": 13.34, "M": 1.00, "N": 13.34, "P": 1.00, "Q": 1.00, "R": 1.00, "S": 1.00, "T": -7.49, "V": -7.49, "W": 1.00, "Y": 1.00},
     "Y": {"A": 24.68, "C": 1.00, "D": 24.68, "E": -6.54, "F": 1.00, "G": -7.49, "H": 13.34, "I": 1.00, "K": 1.00, "L": 1.00, "M": 44.94, "N": 1.00, "P": 13.34, "Q": 1.00, "R": -14.03, "S": 1.00, "T": 1.00, "V": 1.00, "W": -9.37, "Y": 13.34}
+}
+
+# Pre-flattened DIWV tuple lookup for fast O(1) dipeptide evaluation
+DIWV_FLAT: Dict[Tuple[str, str], float] = {
+    (a, b): val for a, row in DIWV_MATRIX.items() for b, val in row.items()
 }
 
 
@@ -448,17 +474,297 @@ def evaluate_peptide(
     }
 
 
+# ==============================================================================
+# 4. FAST-PATH INTERNAL ENGINE & WORKERS
+# ==============================================================================
+
+def _charge_from_counts(counts: Counter, ph: float) -> float:
+    """Calculates net charge directly from precomputed residue counts without re-counting."""
+    pos = 1.0 / (1.0 + 10.0 ** (ph - PKA_LEHNINGER["N_term"]))
+    pos += counts.get("R", 0) / (1.0 + 10.0 ** (ph - PKA_LEHNINGER["R"]))
+    pos += counts.get("K", 0) / (1.0 + 10.0 ** (ph - PKA_LEHNINGER["K"]))
+    pos += counts.get("H", 0) / (1.0 + 10.0 ** (ph - PKA_LEHNINGER["H"]))
+
+    neg = 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER["C_term"] - ph))
+    neg += counts.get("D", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["D"] - ph))
+    neg += counts.get("E", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["E"] - ph))
+    neg += counts.get("C", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["C"] - ph))
+    neg += counts.get("Y", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["Y"] - ph))
+
+    return pos - neg
+
+
+def _isoelectric_point_from_counts(counts: Counter, precision: float = 0.0001, max_iter: int = 100) -> float:
+    """Bisection root finding for pI using pre-accumulated residue counts and cached pKa values."""
+    low = 0.0
+    high = 14.0
+
+    nR = counts.get("R", 0)
+    nK = counts.get("K", 0)
+    nH = counts.get("H", 0)
+    nD = counts.get("D", 0)
+    nE = counts.get("E", 0)
+    nC = counts.get("C", 0)
+    nY = counts.get("Y", 0)
+
+    pka_n = PKA_LEHNINGER["N_term"]
+    pka_r = PKA_LEHNINGER["R"]
+    pka_k = PKA_LEHNINGER["K"]
+    pka_h = PKA_LEHNINGER["H"]
+    pka_c = PKA_LEHNINGER["C_term"]
+    pka_d = PKA_LEHNINGER["D"]
+    pka_e = PKA_LEHNINGER["E"]
+    pka_cys = PKA_LEHNINGER["C"]
+    pka_y = PKA_LEHNINGER["Y"]
+
+    for _ in range(max_iter):
+        mid = (low + high) / 2.0
+        if (high - low) < precision:
+            return mid
+
+        pos = 1.0 / (1.0 + 10.0 ** (mid - pka_n))
+        if nR:
+            pos += nR / (1.0 + 10.0 ** (mid - pka_r))
+        if nK:
+            pos += nK / (1.0 + 10.0 ** (mid - pka_k))
+        if nH:
+            pos += nH / (1.0 + 10.0 ** (mid - pka_h))
+
+        neg = 1.0 / (1.0 + 10.0 ** (pka_c - mid))
+        if nD:
+            neg += nD / (1.0 + 10.0 ** (pka_d - mid))
+        if nE:
+            neg += nE / (1.0 + 10.0 ** (pka_e - mid))
+        if nC:
+            neg += nC / (1.0 + 10.0 ** (pka_cys - mid))
+        if nY:
+            neg += nY / (1.0 + 10.0 ** (pka_y - mid))
+
+        if (pos - neg) > 0.0:
+            low = mid
+        else:
+            high = mid
+
+    return (low + high) / 2.0
+
+
+def _evaluate_peptide_fast(
+    sequence_id: str,
+    raw_sequence: str,
+    config: FilterConfig,
+    source: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    High-throughput internal evaluator with single-pass Counter, linear property derivation,
+    fast DIWV tuple lookups, and exact output format parity.
+    """
+    failed_reasons: List[str] = []
+
+    # 1. Clean and validate sequence
+    clean_seq, is_valid, err_msg = clean_sequence(raw_sequence)
+    if not is_valid:
+        failed_reasons.append(f"Invalid sequence: {err_msg}")
+        rec = _build_rejection_record(sequence_id, raw_sequence, failed_reasons)
+        if source is not None:
+            rec["source"] = source
+        return rec
+
+    length = len(clean_seq)
+    if length < config.min_length or length > config.max_length:
+        failed_reasons.append(
+            f"Length out of bounds ({length} aa not in [{config.min_length}, {config.max_length}])"
+        )
+        rec = _build_rejection_record(sequence_id, clean_seq, failed_reasons)
+        if source is not None:
+            rec["source"] = source
+        return rec
+
+    # 2. Single Counter pass for all composition-based properties
+    counts = Counter(clean_seq)
+
+    # 3. Pure linear Henderson-Hasselbalch charges
+    pos_ph4 = 1.0 / (1.0 + 10.0 ** (4.0 - PKA_LEHNINGER["N_term"])) + counts.get("R", 0) / (1.0 + 10.0 ** (4.0 - PKA_LEHNINGER["R"])) + counts.get("K", 0) / (1.0 + 10.0 ** (4.0 - PKA_LEHNINGER["K"])) + counts.get("H", 0) / (1.0 + 10.0 ** (4.0 - PKA_LEHNINGER["H"]))
+    neg_ph4 = 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER["C_term"] - 4.0)) + counts.get("D", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["D"] - 4.0)) + counts.get("E", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["E"] - 4.0)) + counts.get("C", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["C"] - 4.0)) + counts.get("Y", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["Y"] - 4.0))
+    charge_ph4 = pos_ph4 - neg_ph4
+
+    pos_ph6 = 1.0 / (1.0 + 10.0 ** (6.0 - PKA_LEHNINGER["N_term"])) + counts.get("R", 0) / (1.0 + 10.0 ** (6.0 - PKA_LEHNINGER["R"])) + counts.get("K", 0) / (1.0 + 10.0 ** (6.0 - PKA_LEHNINGER["K"])) + counts.get("H", 0) / (1.0 + 10.0 ** (6.0 - PKA_LEHNINGER["H"]))
+    neg_ph6 = 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER["C_term"] - 6.0)) + counts.get("D", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["D"] - 6.0)) + counts.get("E", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["E"] - 6.0)) + counts.get("C", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["C"] - 6.0)) + counts.get("Y", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["Y"] - 6.0))
+    charge_ph6 = pos_ph6 - neg_ph6
+
+    pos_ph7 = 1.0 / (1.0 + 10.0 ** (7.4 - PKA_LEHNINGER["N_term"])) + counts.get("R", 0) / (1.0 + 10.0 ** (7.4 - PKA_LEHNINGER["R"])) + counts.get("K", 0) / (1.0 + 10.0 ** (7.4 - PKA_LEHNINGER["K"])) + counts.get("H", 0) / (1.0 + 10.0 ** (7.4 - PKA_LEHNINGER["H"]))
+    neg_ph7 = 1.0 / (1.0 + 10.0 ** (PKA_LEHNINGER["C_term"] - 7.4)) + counts.get("D", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["D"] - 7.4)) + counts.get("E", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["E"] - 7.4)) + counts.get("C", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["C"] - 7.4)) + counts.get("Y", 0) / (1.0 + 10.0 ** (PKA_LEHNINGER["Y"] - 7.4))
+    charge_ph7 = pos_ph7 - neg_ph7
+
+    # 4. pI Bisection on shared counts
+    pi = _isoelectric_point_from_counts(counts)
+
+    # 5. Aliphatic Index via counts
+    n_ala = counts.get("A", 0)
+    n_val = counts.get("V", 0)
+    n_ile = counts.get("I", 0)
+    n_leu = counts.get("L", 0)
+    ai = ((n_ala + 2.9 * n_val + 3.9 * (n_ile + n_leu)) / length) * 100.0
+
+    # 6. Instability Index via fast zip and pre-flattened DIWV dictionary
+    if length < 2:
+        ii = 0.0
+    else:
+        total_diwv = sum(DIWV_FLAT.get(pair, 1.0) for pair in zip(clean_seq, clean_seq[1:]))
+        ii = (10.0 / length) * total_diwv
+
+    # 7. Hydrophobic Ratio via counts
+    hydro_count = sum(counts.get(aa, 0) for aa in HYDROPHOBIC_RESIDUES)
+    hydro_ratio = (hydro_count / length) * 100.0
+
+    # 8. GRAVY & Boman Index in sequence order for byte-identical float parity
+    total_hydropathy = sum(KYTE_DOOLITTLE.get(aa, 0.0) for aa in clean_seq)
+    gravy = total_hydropathy / length
+
+    total_solubility = sum(BOMAN_SCALE.get(aa, 0.0) for aa in clean_seq)
+    boman = total_solubility / length
+
+    # 9. Evaluate 7 Food Preservation Criteria
+    if charge_ph6 < config.min_charge_ph6:
+        failed_reasons.append(
+            f"Net Charge @ pH 6.0 too low ({charge_ph6:.2f} < {config.min_charge_ph6:.1f})"
+        )
+    if pi < config.min_pi:
+        failed_reasons.append(
+            f"Isoelectric Point (pI) too low ({pi:.2f} < {config.min_pi:.1f})"
+        )
+    if ai < config.min_aliphatic_index:
+        failed_reasons.append(
+            f"Aliphatic Index too low ({ai:.1f} < {config.min_aliphatic_index:.1f})"
+        )
+    if ii >= config.max_instability_index:
+        failed_reasons.append(
+            f"Instability Index too high ({ii:.1f} >= {config.max_instability_index:.1f})"
+        )
+    if not (config.min_hydrophobic_ratio <= hydro_ratio <= config.max_hydrophobic_ratio):
+        failed_reasons.append(
+            f"Hydrophobic Ratio out of range ({hydro_ratio:.1f}% not in [{config.min_hydrophobic_ratio}%, {config.max_hydrophobic_ratio}%])"
+        )
+    if not (config.min_boman_index <= boman <= config.max_boman_index):
+        failed_reasons.append(
+            f"Boman Index out of range ({boman:.2f} kcal/mol not in [{config.min_boman_index}, {config.max_boman_index}])"
+        )
+
+    # 10. Composite Score & Thermostability Tier
+    passed_all = len(failed_reasons) == 0
+    score = calculate_as35_score(ai, charge_ph6, ii, hydro_ratio, boman) if passed_all else 0.0
+
+    if ai >= config.gold_aliphatic_index:
+        tier = "Gold Standard (AI >= 80)"
+    elif ai >= config.min_aliphatic_index:
+        tier = "Moderate (AI >= 60)"
+    else:
+        tier = "Low (AI < 60)"
+
+    record = {
+        "id": sequence_id,
+        "sequence": clean_seq,
+        "length": length,
+        "isoelectric_point": round(pi, 2),
+        "charge_ph4": round(charge_ph4, 2),
+        "charge_ph6": round(charge_ph6, 2),
+        "charge_ph7": round(charge_ph7, 2),
+        "aliphatic_index": round(ai, 2),
+        "instability_index": round(ii, 2),
+        "hydrophobic_ratio": round(hydro_ratio, 2),
+        "gravy": round(gravy, 3),
+        "boman_index": round(boman, 2),
+        "as35_score": round(score, 2),
+        "thermostability_tier": tier,
+        "passed_all_filters": passed_all,
+        "failed_reasons": failed_reasons
+    }
+    if source is not None:
+        record["source"] = source
+
+    return record
+
+
+# Multiprocessing Worker State & Entry Points
+_worker_config: Optional[FilterConfig] = None
+
+
+def _init_eval_worker(config: FilterConfig) -> None:
+    """Initializer for ProcessPoolExecutor workers to set configuration in worker memory."""
+    global _worker_config
+    _worker_config = config
+
+
+def _eval_worker(task: Tuple[str, str, Optional[str]]) -> Dict[str, Any]:
+    """Top-level worker function for picklable multi-process execution."""
+    seq_id, seq, src = task
+    cfg = _worker_config if _worker_config is not None else FilterConfig()
+    return _evaluate_peptide_fast(seq_id, seq, cfg, source=src)
+
+
 def evaluate_peptide_batch(
     peptides: List[Tuple[str, str]],
-    config: Optional[FilterConfig] = None
+    config: Optional[FilterConfig] = None,
+    sources: Optional[List[str]] = None,
+    progress_cb: Optional[Callable[[int, int], None]] = None,
+    progress_every: int = 10000,
+    parallel: bool = False,
+    chunksize: int = 5000
 ) -> List[Dict[str, Any]]:
     """
-    Evaluates a batch list of (sequence_id, raw_sequence) tuples.
+    High-throughput batch evaluator for candidate peptides.
+    Supports optional multi-process parallelization and periodic progress callbacks.
+
+    Args:
+        peptides: List of (sequence_id, raw_sequence) tuples.
+        config: FilterConfig instance (defaults to FilterConfig.tropical_preset()).
+        sources: Optional list of source annotations (e.g. "CDS", "sORF") matching peptides length.
+        progress_cb: Optional callback func(processed_count, total_count).
+        progress_every: Interval frequency for invoking progress_cb.
+        parallel: If True and len(peptides) >= 2000, leverages multi-core ProcessPoolExecutor.
+        chunksize: ProcessPool chunksize for optimal inter-process IPC batching.
+
+    Returns:
+        List of structured candidate evaluation records.
     """
     if config is None:
         config = FilterConfig()
 
-    return [evaluate_peptide(seq_id, seq, config) for seq_id, seq in peptides]
+    total = len(peptides)
+    if total == 0:
+        return []
+
+    # Parallel Execution Path (ProcessPoolExecutor)
+    if parallel and total >= 2000:
+        max_workers = min(os.cpu_count() or 1, 8)
+        tasks = [
+            (seq_id, seq, sources[i] if sources else None)
+            for i, (seq_id, seq) in enumerate(peptides)
+        ]
+        results: List[Dict[str, Any]] = []
+        with ProcessPoolExecutor(max_workers=max_workers, initializer=_init_eval_worker, initargs=(config,)) as executor:
+            for idx, res in enumerate(executor.map(_eval_worker, tasks, chunksize=chunksize)):
+                results.append(res)
+                if progress_cb and (idx + 1) % progress_every == 0:
+                    progress_cb(idx + 1, total)
+
+        if progress_cb and total % progress_every != 0:
+            progress_cb(total, total)
+
+        return results
+
+    # Sequential Fast-Path Execution
+    results: List[Dict[str, Any]] = []
+    for idx, (seq_id, seq) in enumerate(peptides):
+        src = sources[idx] if sources else None
+        res = _evaluate_peptide_fast(seq_id, seq, config, source=src)
+        results.append(res)
+        if progress_cb and (idx + 1) % progress_every == 0:
+            progress_cb(idx + 1, total)
+
+    if progress_cb and total % progress_every != 0:
+        progress_cb(total, total)
+
+    return results
 
 
 def generate_preservation_narrative(candidate: Union[Dict[str, Any], Any], lang: str = "id") -> str:

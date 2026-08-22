@@ -11,7 +11,7 @@ import pandas as pd
 
 from src.fetcher import GenomeFetcher
 from src.extractor import extract_annotated_cds, extract_six_frame_sorfs
-from src.filters import FilterConfig, evaluate_peptide
+from src.filters import FilterConfig, evaluate_peptide, evaluate_peptide_batch
 
 
 # ==============================================================================
@@ -234,19 +234,21 @@ def run_pipeline(
     # 4. Physicochemical Filtering & Scoring
     logger.info(f"\n[STEP 3/4] Physicochemical Filtering & AliphaScore-35 Scoring...")
     t0 = time.time()
-    evaluated_records = []
 
-    for idx, item in enumerate(extracted_items):
-        eval_res = evaluate_peptide(
-            sequence_id=item["id"],
-            raw_sequence=item["sequence"],
-            config=config
-        )
-        eval_res["source"] = item["source"]
-        evaluated_records.append(eval_res)
+    peptides_input = [(item["id"], item["sequence"]) for item in extracted_items]
+    sources_input = [item["source"] for item in extracted_items]
 
-        if (idx + 1) % 10000 == 0 or (idx + 1) == total_extracted:
-            logger.info(f"  - Processed {idx + 1:,} / {total_extracted:,} sequences...")
+    def _progress_callback(processed: int, total: int) -> None:
+        logger.info(f"  - Processed {processed:,} / {total:,} sequences...")
+
+    evaluated_records = evaluate_peptide_batch(
+        peptides=peptides_input,
+        config=config,
+        sources=sources_input,
+        progress_cb=_progress_callback,
+        progress_every=10000,
+        parallel=True
+    )
 
     df_all = pd.DataFrame(evaluated_records)
     df_passed = df_all[df_all["passed_all_filters"]].sort_values(

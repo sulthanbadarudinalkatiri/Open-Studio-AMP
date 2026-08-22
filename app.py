@@ -9,6 +9,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
+import re
+
+SMART_LABEL_PATTERN = re.compile(r"^(?:#|RANK\s*|TOP\s*)?(\d+)$")
 
 from src.theme import (
     DESIGN_TOKENS,
@@ -16,7 +19,8 @@ from src.theme import (
     I18N,
     render_kpi_card,
     get_base_chart_layout,
-    C, R, S, TYPO
+    C, R, S, TYPO,
+    build_smart_label
 )
 from src.reporter import generate_dossier_pdf
 from src.structure import fetch_peptide_3d_pdb, build_3dmol_html
@@ -31,6 +35,12 @@ from src.filters import (
 )
 from src.extractor import extract_from_custom_fasta
 from engine import run_pipeline, NISIN_A_SEQUENCE
+
+
+def _safe(value: Any, max_len: int = 100) -> str:
+    if not isinstance(value, str):
+        value = str(value)
+    return html.escape(value[:max_len])
 
 
 @st.cache_data(show_spinner=False)
@@ -67,7 +77,6 @@ def load_screening_data() -> pd.DataFrame:
     # If the user is running the app for the first time and hasn't run the backend
     if not target.exists():
         with st.spinner("Initializing bio-screening pipeline... (First run only)"):
-            from engine import run_pipeline
             df_all, _ = run_pipeline(
                 bioproject="PRJDB8096",
                 prefix="pls47",
@@ -132,7 +141,7 @@ def main():
     custom_active_name = st.session_state.get("custom_org_name", "").strip() or st.session_state.get("custom_active_filename", t["custom_data_name"])
     
     if is_custom_source and custom_active_name:
-        st.sidebar.markdown(t["sidebar_sub_custom"].format(name=custom_active_name[:28]))
+        st.sidebar.markdown(t["sidebar_sub_custom"].format(name=_safe(custom_active_name, 28)))
     else:
         st.sidebar.markdown(t["sidebar_sub_default"])
         
@@ -175,13 +184,22 @@ def main():
                 accept_multiple_files=True
             )
             if uploaded_files:
+                valid_files = []
                 for uf in uploaded_files:
+                    size_mb = uf.size / (1024 * 1024)
+                    if size_mb > 10.0:
+                        st.sidebar.warning(t["upload_too_large"].format(name=_safe(uf.name), size=size_mb))
+                        continue
+                    
                     custom_files_data.append({
                         "name": uf.name,
                         "content": uf.getvalue().decode("utf-8", errors="replace")
                     })
-                custom_name_display = ", ".join(uf.name for uf in uploaded_files)
-                st.session_state["custom_active_filename"] = custom_name_display
+                    valid_files.append(uf)
+                
+                if valid_files:
+                    custom_name_display = ", ".join(uf.name for uf in valid_files)
+                    st.session_state["custom_active_filename"] = _safe(custom_name_display)
 
         with upload_tab2:
             pasted_text = st.text_area(
@@ -196,7 +214,7 @@ def main():
                     "content": pasted_text.strip()
                 })
                 custom_name_display = "Input_Manual_FASTA"
-                st.session_state["custom_active_filename"] = custom_name_display
+                st.session_state["custom_active_filename"] = _safe(custom_name_display)
 
         if custom_files_data:
             with st.sidebar:
@@ -214,8 +232,8 @@ def main():
 
             if len(df_custom) > 0:
                 df_raw = df_custom
-                active_dataset_name = custom_name_display
-                disp_name = custom_name_display if len(custom_name_display) < 30 else custom_name_display[:27] + "..."
+                active_dataset_name = _safe(custom_name_display)
+                disp_name = _safe(custom_name_display, 27) + ("..." if len(custom_name_display) > 27 else "")
                 st.sidebar.success(t["custom_success"].format(n=len(df_custom), name=disp_name))
             else:
                 st.sidebar.warning(t["custom_empty"])
@@ -236,8 +254,8 @@ def main():
             placeholder=t["input_env_ph"],
             key="custom_env_input"
         )
-        st.session_state['custom_org_name'] = custom_organism_name
-        st.session_state['custom_env'] = custom_environment
+        st.session_state['custom_org_name'] = _safe(custom_organism_name)
+        st.session_state['custom_env'] = _safe(custom_environment)
 
     # 2. Collapsible Filter Expander (Ergonomic Friction Reduction)
     with st.sidebar.expander(t["filter_expander_title"], expanded=False):
@@ -318,20 +336,11 @@ def main():
         seq_match = search_filtered_df["sequence"].astype(str).str.contains(query_upper, regex=False, case=False, na=False)
         
         # 3. Smart label / substring matching
-        def check_smart_label_match(row: pd.Series) -> bool:
-            score = row.get("as35_score", 0.0)
-            ai = row.get("aliphatic_index", 0.0)
-            charge = row.get("charge_ph6", 0.0)
-            cid = row.get("id", "Unknown")
-            smart_str = f"[{score:.1f} | AI:{ai:.0f} | Q:{charge:+.1f}] {cid}"
-            return query_clean.lower() in smart_str.lower()
-        
-        label_match = search_filtered_df.apply(check_smart_label_match, axis=1)
+        label_match = search_filtered_df.apply(lambda row: query_clean.lower() in build_smart_label(row).lower(), axis=1)
         
         # 4. Rank matching: e.g. "#1", "Rank 1", "Top 5", "1", "10"
         rank_match = pd.Series(False, index=search_filtered_df.index)
-        import re
-        rank_search = re.search(r'^(?:#|RANK\s*|TOP\s*)?(\d+)$', query_upper)
+        rank_search = SMART_LABEL_PATTERN.search(query_upper)
         if rank_search:
             rank_num = int(rank_search.group(1))
             if 1 <= rank_num <= len(search_filtered_df):
@@ -342,13 +351,6 @@ def main():
     if len(search_filtered_df) > 0:
         if search_query:
             st.sidebar.caption(t["search_match_info"].format(n=len(search_filtered_df)))
-
-        def build_smart_label(row: pd.Series) -> str:
-            score = row.get("as35_score", 0.0)
-            ai = row.get("aliphatic_index", 0.0)
-            charge = row.get("charge_ph6", 0.0)
-            cid = row.get("id", "Unknown")
-            return f"[{score:.1f} | AI:{ai:.0f} | Q:{charge:+.1f}] {cid}"
 
         candidate_indices = list(range(len(search_filtered_df)))
         display_options = [build_smart_label(row) for _, row in search_filtered_df.iterrows()]
@@ -448,82 +450,100 @@ def main():
         if total_passed == 0:
             st.info(f"**{t.get('empty_state_title', '')}**\n\n{t.get('empty_state_desc', '')}", icon="ℹ️")
         else:
-            # Charts Section
-            col_ch1, col_ch2 = st.columns([1.6, 1.0])
-            with col_ch1:
-                st.subheader(t["scatter_title"])
-                if total_passed > 0:
-                    scatter_plot_df = filtered_df.copy()
-                    fig_scatter = px.scatter(
-                        scatter_plot_df,
-                        x="aliphatic_index",
-                        y="charge_ph6",
-                        color="as35_score",
-                        size="length",
-                        hover_name="id",
-                        hover_data={"aliphatic_index": ":.1f", "charge_ph6": ":.2f", "as35_score": ":.2f", "source": True},
-                        color_continuous_scale=["#0A192F", "#0E8388", "#00ABB3", "#38E54D"],
-                        labels={"aliphatic_index": t["scatter_x"], "charge_ph6": t["scatter_y"], "as35_score": "Score"}
-                    )
-                    
-                    # Nisin A Control Point
-                    fig_scatter.add_trace(go.Scatter(
-                        x=[nisin_res["aliphatic_index"]],
-                        y=[nisin_res["charge_ph6"]],
-                        mode="markers+text",
-                        marker=dict(size=14, color=C["danger"], symbol="diamond", line=dict(width=2, color="#FFFFFF")),
-                        name="Nisin A Control",
-                        text=["Nisin A (E234)"],
-                        textposition="top right",
-                        textfont=dict(family=TYPO["font_family"], color=C["danger"], size=12)
-                    ))
+            # 1. Scatter Plot (Hero Chart)
+            st.subheader(t["chart_scatter_title_short"])
+            
+            scatter_plot_df = filtered_df.copy()
+            color_map = {
+                "Thermophilic": "#F97316",
+                "Mesophilic": "#0E8388"
+            }
+            fig_scatter = px.scatter(
+                scatter_plot_df,
+                x="aliphatic_index",
+                y="charge_ph6",
+                color="thermostability_tier",
+                hover_name="id",
+                hover_data={"aliphatic_index": ":.1f", "charge_ph6": ":.2f", "as35_score": ":.2f", "source": True},
+                color_discrete_map=color_map,
+                labels={"aliphatic_index": t["scatter_x"], "charge_ph6": t["scatter_y"], "thermostability_tier": t["tab1_top10_col_tier"]}
+            )
+            
+            # Nisin A Control Point
+            fig_scatter.add_trace(go.Scatter(
+                x=[nisin_res["aliphatic_index"]],
+                y=[nisin_res["charge_ph6"]],
+                mode="markers+text",
+                marker=dict(size=14, color=C["danger"], symbol="diamond", line=dict(width=2, color="#FFFFFF")),
+                name="Nisin A Control",
+                text=["Nisin A (E234)"],
+                textposition="top right",
+                textfont=dict(family=TYPO["font_family"], color=C["danger"], size=12),
+                showlegend=False
+            ))
 
-                    # Selected Candidate Point
-                    if selected_candidate is not None:
-                        fig_scatter.add_trace(go.Scatter(
-                            x=[selected_candidate["aliphatic_index"]],
-                            y=[selected_candidate["charge_ph6"]],
-                            mode="markers",
-                            marker=dict(size=18, color="#FFFFFF", symbol="star", line=dict(width=2, color=C["primary"])),
-                            name="Selected Target",
-                            hoverinfo="skip"
-                        ))
+            # Selected Candidate Point
+            if selected_candidate is not None:
+                fig_scatter.add_trace(go.Scatter(
+                    x=[selected_candidate["aliphatic_index"]],
+                    y=[selected_candidate["charge_ph6"]],
+                    mode="markers",
+                    marker=dict(size=18, color="#FFFFFF", symbol="star", line=dict(width=2, color=C["primary"])),
+                    name="Selected Target",
+                    hoverinfo="skip",
+                    showlegend=False
+                ))
 
-                    fig_scatter.update_layout(**get_base_chart_layout(height=420))
-                    fig_scatter.update_xaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)", zeroline=False)
-                    fig_scatter.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)", zeroline=False)
-                    st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
+            fig_scatter.update_layout(**get_base_chart_layout(height=420))
+            fig_scatter.update_xaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)", zeroline=False)
+            fig_scatter.update_yaxes(showgrid=True, gridcolor="rgba(255,255,255,0.05)", zeroline=False)
+            st.plotly_chart(fig_scatter, use_container_width=True, config={'displayModeBar': False})
 
-            with col_ch2:
-                st.subheader(t["funnel_title"])
-                if total_screened > 0:
-                    all_fail_lists = df_raw["failed_reasons"].tolist()
-                    
-                    def count_cumulative(*reasons):
-                        return sum(1 for r in all_fail_lists if not isinstance(r, list) or not any(sub in item for sub in reasons for item in r))
+            # 2. Funnel logic & Audit Caption
+            if total_screened > 0:
+                all_fail_lists = df_raw["failed_reasons"].tolist()
+                
+                def count_cumulative(*reasons):
+                    return sum(1 for r in all_fail_lists if not isinstance(r, list) or not any(sub in item for sub in reasons for item in r))
 
-                    funnel_data = dict(
-                        number=[
-                            total_screened,
-                            count_cumulative("Charge @ pH 6.0"),
-                            count_cumulative("Charge @ pH 6.0", "Aliphatic Index"),
-                            count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index"),
-                            count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point"),
-                            count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio"),
-                            count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio", "Boman Index"),
-                            int((df_raw["passed_all_filters"] == True).sum())
-                        ],
-                        stage=[
-                            t["funnel_crit_total"],
-                            t["funnel_crit_charge"],
-                            t["funnel_crit_ai"],
-                            t["funnel_crit_ii"],
-                            t["funnel_crit_pi"],
-                            t["funnel_crit_hydro"],
-                            t["funnel_crit_boman"],
-                            t["funnel_crit_passed"]
-                        ]
-                    )
+                funnel_nums = [
+                    total_screened,
+                    count_cumulative("Charge @ pH 6.0"),
+                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index"),
+                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index"),
+                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point"),
+                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio"),
+                    count_cumulative("Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio", "Boman Index"),
+                    int((df_raw["passed_all_filters"] == True).sum())
+                ]
+                
+                funnel_stages = [
+                    t["funnel_crit_total"],
+                    t["funnel_crit_charge"],
+                    t["funnel_crit_ai"],
+                    t["funnel_crit_ii"],
+                    t["funnel_crit_pi"],
+                    t["funnel_crit_hydro"],
+                    t["funnel_crit_boman"],
+                    t["funnel_crit_passed"]
+                ]
+                
+                # Find biggest drop
+                drops = [funnel_nums[i] - funnel_nums[i+1] for i in range(len(funnel_nums)-1)]
+                max_drop_idx = drops.index(max(drops)) if drops else 0
+                biggest_drop_reason = funnel_stages[max_drop_idx + 1]
+                
+                audit_text = t["audit_caption"].format(
+                    total=f"{total_screened:,}",
+                    passed=f"{total_passed:,}",
+                    rate=pass_rate,
+                    biggest_drop_reason=biggest_drop_reason
+                )
+                st.caption(audit_text)
+                
+                # 3. Funnel Expander
+                with st.expander(t["funnel_expander_title"]):
+                    funnel_data = dict(number=funnel_nums, stage=funnel_stages)
                     fig_funnel = px.funnel(
                         funnel_data,
                         y="stage",
@@ -534,17 +554,6 @@ def main():
                     funnel_layout["yaxis"] = dict(title="", tickfont=dict(size=10, family=TYPO["font_family"]))
                     fig_funnel.update_layout(**funnel_layout)
                     st.plotly_chart(fig_funnel, use_container_width=True)
-                    
-                    # Add narrative caption below the chart
-                    baseline_passed = int((df_raw["passed_all_filters"] == True).sum())
-                    caption_text = t.get("funnel_caption", "").format(
-                        total=f"{total_screened:,}",
-                        baseline=f"{baseline_passed:,}",
-                        active=f"{total_passed:,}"
-                    )
-                    st.caption(caption_text)
-                else:
-                    st.info(t["no_match"])
 
 
 
@@ -618,7 +627,7 @@ def main():
             st.download_button(
                 label=t["btn_csv"],
                 data=csv_data,
-                file_name=f"Open_Studio_AMP_Screening_{active_dataset_name[:12]}.csv",
+                file_name=f"Open_Studio_AMP_Screening_{_safe(active_dataset_name, 12)}.csv",
                 mime="text/csv",
                 use_container_width=True,
                 key="tab3_csv_download"

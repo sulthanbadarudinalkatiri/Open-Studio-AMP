@@ -22,14 +22,16 @@ open-studio-amp/
 │   ├── test_custom_ingestion.py     # Unit tests for in-memory FASTA parsing & sequence detection
 │   ├── test_modular_architecture.py # Unit tests for modular decoupling & I18N parity
 │   ├── test_ui_sorting_search.py    # Unit tests for sorting, motif search & smart label formatting
+│   ├── test_parity_fastpath.py      # Unit tests for optimized O(N) evaluation vs reference parity
+│   ├── test_security.py             # Unit tests for XSS prevention and payload sanitation
 │   └── local_controls.py            # Suite for local food bioactive peptide expansion
 ├── app.py                   # Streamlit interactive web studio controller
 ├── engine.py                # CLI pipeline orchestrator & Case study generator
 ├── requirements.txt         # Python library dependencies
 ├── PRD.md                   # Product requirements
+├── CONTRIBUTING.md          # Guidelines for contributing & CI/CD standards
 ├── METHODOLOGY.md           # Biochemical mathematical formulas
 ├── ARCHITECTURE.md          # System architecture & data contracts
-├── TASK.md                  # Step-by-step task tracker
 └── README.md                # Main project documentation
 ```
 

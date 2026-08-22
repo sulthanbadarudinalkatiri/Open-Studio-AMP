@@ -93,14 +93,15 @@ def build_3dmol_html(
     - Cationic (Arg, Lys, His) highlighted in Primary Brand Color (Tosca/Teal)
     - Hydrophobic (Ala, Val, Leu, Ile, Phe, Trp, Met) highlighted in Amber/Orange
     """
-    pdb_clean = pdb_data.replace("\r", "").replace("\\", "\\\\").replace("\n", "\\n").replace('"', '\\"')
+    import json
+    pdb_clean = json.dumps(pdb_data).replace("<", "\\u003c")
     html_code = f"""
     <div id="container-3d" style="height: {height}px; width: 100%; position: relative; border-radius: {border_radius}; border: 1px solid {border_color}; overflow: hidden; background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);" role="region" aria-label="3D Molecular Model"></div>
     <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
     <script>
         let element = document.getElementById("container-3d");
         let viewer = $3Dmol.createViewer(element, {{backgroundColor: "white"}});
-        let pdbData = "{pdb_clean}";
+        let pdbData = {pdb_clean};
         viewer.addModel(pdbData, "pdb");
         
         viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum', thickness: 0.4}}}});

@@ -1,7 +1,7 @@
 # R&D Case Study: Geobacillus thermocatenulatus PLS47 vs. Nisin A Baseline
 
 * **BioProject Target:** `PRJDB8096` (Indonesian Soil / Geothermal Environment - NCBI PRJDB8096)
-* **Pipeline Run Timestamp:** 2026-08-20 14:52:07 UTC
+* **Pipeline Run Timestamp:** 2026-08-22 04:10:31 UTC
 * **Total Candidates Mined:** 241,781
 * **Qualified Candidates (Passed All 7 Filters):** 20,600 (8.52%)
 
