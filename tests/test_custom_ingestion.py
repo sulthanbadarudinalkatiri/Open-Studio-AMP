@@ -96,3 +96,21 @@ class TestCustomFastaExtractionAndEvaluation:
         assert "as35_score" in df_custom.columns
         assert "passed_all_filters" in df_custom.columns
         assert df_custom["passed_all_filters"].all()
+
+    def test_extract_with_audit_stats(self):
+        from src.extractor import extract_from_custom_fasta_with_stats
+        mixed_fasta = """
+        >Valid_Protein_1
+        MGGERVTIQNLKIVKVDPERNLLLIKGNVPGPRKGLVIVKSAVKAAKKAK
+        >Short_Sequence
+        ACD
+        >Invalid_Chars
+        MGGXYZ1234
+        """
+        peptides, stats = extract_from_custom_fasta_with_stats(mixed_fasta, organism_prefix="AuditLab")
+        assert len(peptides) == 1
+        assert stats["total_records"] == 3
+        assert stats["valid_proteins"] == 3
+        assert stats["skipped_length"] == 1
+        assert stats["invalid_amino_acids"] == 1
+        assert stats["total_candidates"] == 1

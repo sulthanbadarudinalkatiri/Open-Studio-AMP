@@ -332,14 +332,95 @@ CUSTOM_CSS = f"""
         font-size: 16px;
         font-weight: 800;
         color: #0F172A;
-        letter-spacing: -0.01em;
         margin-bottom: 4px;
     }}
     .export-hero-desc {{
         font-size: 13px;
         color: #64748B;
-        margin-bottom: 14px;
         line-height: 1.5;
+    }}
+
+    /* FASTA Ingestion Diagnostic Audit Card */
+    .audit-summary-card {{
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: var(--radius-sm);
+        padding: 12px 14px;
+        margin-top: 10px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }}
+    .audit-summary-title {{
+        font-size: 11.5px;
+        font-weight: 700;
+        color: #334155;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }}
+    .audit-table {{
+        width: 100%;
+        font-size: 12px;
+        border-collapse: collapse;
+    }}
+    .audit-table td {{
+        padding: 3.5px 0;
+        color: #475569;
+        border-bottom: 1px dashed #F1F5F9;
+    }}
+    .audit-table td:last-child {{
+        text-align: right;
+        font-weight: 700;
+        color: #0F172A;
+        font-family: var(--font-mono);
+    }}
+
+    /* Henderson-Hasselbalch Food Matrix Charge Table */
+    .titr-matrix-card {{
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: var(--radius-sm);
+        padding: 12px 14px;
+        margin-top: 12px;
+        box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    }}
+    .titr-matrix-title {{
+        font-size: 11px;
+        font-weight: 700;
+        color: #334155;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }}
+    .titr-matrix-table {{
+        width: 100%;
+        font-size: 11.5px;
+        border-collapse: collapse;
+    }}
+    .titr-matrix-table th {{
+        text-align: left;
+        padding: 5px 8px;
+        color: #64748B;
+        font-weight: 600;
+        border-bottom: 1.5px solid #CBD5E1;
+        font-size: 11px;
+    }}
+    .titr-matrix-table td {{
+        padding: 5px 8px;
+        color: #334155;
+        border-bottom: 1px solid #F1F5F9;
+    }}
+    .titr-matrix-table td:nth-child(2),
+    .titr-matrix-table td:nth-child(3),
+    .titr-matrix-table td:nth-child(4) {{
+        font-family: var(--font-mono);
+        text-align: right;
     }}
 
     /* Modern Tabs & Button Accents */
@@ -441,6 +522,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "sidebar_sub_custom": "📂 *Dataset Aktif: {name}*",
         "sidebar_methodology_note": "<b>Catatan Metodologis:</b> AliphaScore-35 adalah model heuristik prioritisasi komputasional, bukan bukti aktivitas antimikroba aktual. Kandidat terpilih wajib menjalani validasi eksperimental di laboratorium basah (wet-lab).",
         "sidebar_lang": "🌐 Pilihan Bahasa / Language:",
+        "active_filters_label": "Filter Aktif:",
         "src_selector_title": "Pilih Sumber Data Sekuens:",
         "src_default_label": "🔬 Dataset Acuan (PLS47 Tanah Indonesia - 241k Sekuens)",
         "src_custom_label": "📂 Unggah / Paste Genom Sendiri (.faa / .fna / .fasta)",
@@ -459,6 +541,24 @@ I18N: Dict[str, Dict[str, str]] = {
         "input_org_ph": "Contoh: Lactobacillus plantarum",
         "input_env_name": "Asal Lingkungan/Habitat (opsional):",
         "input_env_ph": "Contoh: Susu fermentasi",
+        "first_run_spinner": "Menginisialisasi pipeline skrining genom PLS47 (Tahap 1: Ingesti, Tahap 2: Translasi 6-Frame, Tahap 3: Evaluasi Biofisik)...",
+
+        # Ingestion Audit Card
+        "audit_card_title": "Diagnostik Validasi & Ingesti FASTA",
+        "audit_stat_records": "Total Rekord Terurai",
+        "audit_stat_type": "Tipe Sekuens",
+        "audit_stat_valid_prot": "Sekuens Protein (CDS)",
+        "audit_stat_detected_dna": "Sekuens DNA Terdeteksi",
+        "audit_stat_sorfs": "sORF 6-Frame Terekstraksi",
+        "audit_stat_skipped_len": "Dilewati (Panjang <5 / >100 aa)",
+        "audit_stat_invalid_aa": "Asam Amino Non-Kanonikal / Stop",
+        "audit_stat_forwarded": "Total Kandidat Masuk Skrining",
+
+        # Presets Buttons & Toast
+        "preset_btn_strict": "🎯 Standar Pangan Tropis (Ketat)",
+        "preset_btn_permissive": "🔍 Eksplorasi Luas (Permisif)",
+        "preset_btn_reset": "🔄 Reset ke Default",
+        "preset_applied_toast": "Filter berhasil disetel ke preset: {preset}",
 
         # Candidate Selector Toolbar
         "target_header": "Pilih Peptida untuk Dianalisis",
@@ -469,8 +569,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "sort_opt_len_asc": "📏 Panjang Sekuens Paling Efisien (Sintesis SPPS)",
         "search_label": "🔍 Cari ID, Motif Asam Amino, atau Peringkat:",
         "search_placeholder": "Cth: #1, 23852, RKK, FLI, atau CDS_...",
+        "search_help": "💡 Pencarian mencocokkan nomor peringkat (misal '#1' atau '10'), substring ID, motif asam amino (cth: 'RKK', 'FLI'), atau metrik skor.",
         "search_match_info": "Ditemukan {n} kandidat sesuai kata kunci.",
-        "search_no_match": "💡 Tidak ada kandidat yang cocok. Coba perpendek kata kunci pencarian.",
+        "search_match_window": "Ditemukan {total} kandidat (menampilkan {limit} teratas di dropdown). Gunakan kata kunci lebih spesifik untuk mempersempit.",
+        "selector_window_info": "📋 Menampilkan {limit} kandidat teratas dari {total} yang lolos seleksi.",
         "select_cand": "Peptida Aktif Terpilih:",
         "no_match": "💡 Kriteria filter terlalu ketat. Coba turunkan slider skor untuk melihat kandidat.",
 
@@ -525,13 +627,13 @@ I18N: Dict[str, Dict[str, str]] = {
         "funnel_expander_title": "Corong Penyaringan Bertingkat",
         "audit_caption": "Total disaring: {total}, Lolos: {passed} ({rate:.1f}%). Eliminasi terbesar pada tahap: {biggest_drop_reason}.",
         "funnel_crit_total": "Total Sekuens Awal",
-        "funnel_crit_valid": "Lolos Validasi & Panjang",
-        "funnel_crit_charge": "Lolos Muatan @ pH 6.0 (>= +2.0)",
-        "funnel_crit_ai": "Lolos Ketahanan Panas (>= 60.0)",
-        "funnel_crit_ii": "Lolos Stabilitas Larutan (< 40.0)",
-        "funnel_crit_pi": "Lolos Titik Isoelektrik (>= 8.4)",
-        "funnel_crit_hydro": "Lolos Rasio Hidrofobik (30-55%)",
-        "funnel_crit_boman": "Lolos Indeks Boman (0.0-2.5 kcal/mol)",
+        "funnel_crit_valid": "Lolos Validasi & Panjang (5-100 aa)",
+        "funnel_crit_charge": "Lolos Muatan @ pH 6.0 (>= +{val:.1f})",
+        "funnel_crit_pi": "Lolos Titik Isoelektrik (>= {val:.1f})",
+        "funnel_crit_ai": "Lolos Ketahanan Panas (>= {val:.0f})",
+        "funnel_crit_ii": "Lolos Stabilitas Larutan (< {val:.0f})",
+        "funnel_crit_hydro": "Lolos Rasio Hidrofobik ({min_val:.0f}-{max_val:.0f}%)",
+        "funnel_crit_boman": "Lolos Indeks Boman ({min_val:.1f}-{max_val:.1f} kcal/mol)",
         "funnel_crit_passed": "Kandidat Lolos Seluruh Kriteria",
         "funnel_caption": "📝 **Catatan Diagnostik**: Grafik ini melacak audisi awal (baseline) dari total {total} populasi data hingga tersaring menjadi {baseline} kandidat yang memenuhi 7 filter dasar pangan. Pengaturan parameter ketat Anda di panel Sidebar kemudian memangkas lagi populasi dasar tersebut menjadi **{active}** kandidat elit yang sedang dianalisis di layar saat ini.",
 
@@ -542,8 +644,20 @@ I18N: Dict[str, Dict[str, str]] = {
         "titr_ph4": "pH 4.0 (Pangan Asam)",
         "titr_ph6": "pH 6.0 (Pangan Rendah Asam)",
         "titr_ph7": "pH 7.4 (Matriks Netral)",
+        "titr_table_title": "Tabel Referensi Muatan Bersih Matriks Pangan",
+        "titr_table_header_matrix": "Matriks Pangan Acuan",
+        "titr_table_header_ph": "pH",
+        "titr_table_header_target": "Kandidat Terpilih",
+        "titr_table_header_nisin": "Nisin A (E234)",
+        "titr_row_ph3": "Pangan Sangat Asam (Jus/Sitrus)",
+        "titr_row_ph4": "Pangan Asam (Fermentasi/Saus)",
+        "titr_row_ph6": "Pangan Rendah Asam (Susu/Daging)",
+        "titr_row_ph7": "Matriks Fisiologis / Netral",
+        "titr_row_pi": "Titik Isoelektrik (Netral Z=0)",
         "mol_title": "Model Struktur 3D Terprediksi",
         "mol_caption": "🟢 Tosca = Kationik (Arg, Lys, His) | 🟠 Oranye = Hidrofobik (Ala, Val, Leu, Ile, Phe, Trp, Met)",
+        "spinner_3d_loading": "Memprediksi koordinat molekuler 3D (ESMFold AI / Heuristik)...",
+        "esm_fallback_warning": "⚠️ Layanan ESMFold API sedang offline/timeout (3s). Menampilkan model aproksimasi heliks-alfa ideal.",
         "table_title": "Eksplorasi Database Kandidat Lolos Seleksi",
         "btn_csv": "📥 Unduh Tabel Data Lengkap (.CSV)",
         "btn_pdf": "📄 Unduh Berkas Dossier Resmi (.PDF)",
@@ -566,6 +680,7 @@ I18N: Dict[str, Dict[str, str]] = {
         "sidebar_sub_custom": "📂 *Active Dataset: {name}*",
         "sidebar_methodology_note": "<b>Methodological Note:</b> AliphaScore-35 is a computational prioritization heuristic, not empirical proof of actual antimicrobial activity. Selected candidates must undergo experimental validation in a wet laboratory (wet-lab).",
         "sidebar_lang": "🌐 Language / Pilihan Bahasa:",
+        "active_filters_label": "Active Filters:",
         "src_selector_title": "Select Sequence Data Source:",
         "src_default_label": "🔬 Benchmark Dataset (PLS47 Indonesian Soil - 241k Seqs)",
         "src_custom_label": "📂 Upload / Paste Custom Genome (.faa / .fna / .fasta)",
@@ -584,6 +699,24 @@ I18N: Dict[str, Dict[str, str]] = {
         "input_org_ph": "e.g., Lactobacillus plantarum",
         "input_env_name": "Environmental Origin/Habitat (optional):",
         "input_env_ph": "e.g., Fermented dairy",
+        "first_run_spinner": "Initializing PLS47 genome screening pipeline (Phase 1: Ingestion, Phase 2: 6-Frame Translation, Phase 3: Biophysical Scoring)...",
+
+        # Ingestion Audit Card
+        "audit_card_title": "FASTA Validation & Ingestion Audit",
+        "audit_stat_records": "Total Records Parsed",
+        "audit_stat_type": "Sequence Type",
+        "audit_stat_valid_prot": "Valid Protein (CDS)",
+        "audit_stat_detected_dna": "Detected DNA Sequences",
+        "audit_stat_sorfs": "6-Frame sORFs Extracted",
+        "audit_stat_skipped_len": "Skipped (Length <5 / >100 aa)",
+        "audit_stat_invalid_aa": "Invalid Non-Canonical / Stops",
+        "audit_stat_forwarded": "Total Forwarded to Screening",
+
+        # Presets Buttons & Toast
+        "preset_btn_strict": "🎯 Tropical Food Standard (Strict)",
+        "preset_btn_permissive": "🔍 Broad Exploration (Permissive)",
+        "preset_btn_reset": "🔄 Reset Filters",
+        "preset_applied_toast": "Filters successfully set to: {preset}",
 
         # Candidate Selector Toolbar
         "target_header": "Select Active Peptide Target",
@@ -594,8 +727,10 @@ I18N: Dict[str, Dict[str, str]] = {
         "sort_opt_len_asc": "📏 Most Cost-Efficient Length (SPPS Synthesis)",
         "search_label": "🔍 Search ID, Amino Acid Motif, or Rank:",
         "search_placeholder": "E.g., #1, 23852, RKK, FLI, or CDS_...",
+        "search_help": "💡 Search matches rank numbers (e.g. '#1' or '10'), ID substrings, amino acid motifs (e.g. 'RKK', 'FLI'), or score metrics.",
         "search_match_info": "Found {n} candidates matching search query.",
-        "search_no_match": "💡 No candidates match this query. Try shortening search keywords.",
+        "search_match_window": "Found {total} candidates (showing top {limit} in dropdown). Use more specific keywords to narrow down.",
+        "selector_window_info": "📋 Displaying top {limit} of {total} passed candidates.",
         "select_cand": "Active Selected Peptide:",
         "no_match": "💡 Filter criteria are too strict. Try lowering score slider to view candidates.",
 
@@ -650,13 +785,13 @@ I18N: Dict[str, Dict[str, str]] = {
         "funnel_expander_title": "Multi-Stage Screening Funnel",
         "audit_caption": "Total screened: {total}, Passed: {passed} ({rate:.1f}%). Largest elimination stage: {biggest_drop_reason}.",
         "funnel_crit_total": "Total Starting Sequences",
-        "funnel_crit_valid": "Passed Validation & Length",
-        "funnel_crit_charge": "Passed Net Charge @ pH 6.0 (>= +2.0)",
-        "funnel_crit_ai": "Passed Thermal Resistance (>= 60.0)",
-        "funnel_crit_ii": "Passed Solution Stability (< 40.0)",
-        "funnel_crit_pi": "Passed Isoelectric Point (>= 8.4)",
-        "funnel_crit_hydro": "Passed Hydrophobic Ratio (30-55%)",
-        "funnel_crit_boman": "Passed Boman Index (0.0-2.5 kcal/mol)",
+        "funnel_crit_valid": "Passed Validation & Length (5-100 aa)",
+        "funnel_crit_charge": "Passed Net Charge @ pH 6.0 (>= +{val:.1f})",
+        "funnel_crit_pi": "Passed Isoelectric Point (>= {val:.1f})",
+        "funnel_crit_ai": "Passed Thermal Resistance (>= {val:.0f})",
+        "funnel_crit_ii": "Passed Solution Stability (< {val:.0f})",
+        "funnel_crit_hydro": "Passed Hydrophobic Ratio ({min_val:.0f}-{max_val:.0f}%)",
+        "funnel_crit_boman": "Passed Boman Index ({min_val:.1f}-{max_val:.1f} kcal/mol)",
         "funnel_crit_passed": "Candidates Passing All Criteria",
         "funnel_caption": "📝 **Diagnostic Note**: This chart tracks the initial baseline audition from the total dataset of {total} down to {baseline} candidates meeting the 7 basic food-grade filters. Your strict sidebar parameter settings then further refine this baseline down to the **{active}** elite candidates currently being analyzed on screen.",
 
@@ -667,8 +802,20 @@ I18N: Dict[str, Dict[str, str]] = {
         "titr_ph4": "pH 4.0 (Acidic Food)",
         "titr_ph6": "pH 6.0 (Low-Acid Food)",
         "titr_ph7": "pH 7.4 (Neutral Matrix)",
+        "titr_table_title": "Food Matrix Net Charge Reference Table",
+        "titr_table_header_matrix": "Reference Food Matrix",
+        "titr_table_header_ph": "pH",
+        "titr_table_header_target": "Selected Target",
+        "titr_table_header_nisin": "Nisin A (E234)",
+        "titr_row_ph3": "High-Acid Food (Juice/Citrus)",
+        "titr_row_ph4": "Acidic Food (Fermented/Sauce)",
+        "titr_row_ph6": "Low-Acid Food (Milk/Meat)",
+        "titr_row_ph7": "Physiological / Neutral Matrix",
+        "titr_row_pi": "Isoelectric Point (Neutral Z=0)",
         "mol_title": "Predicted 3D Molecular Model",
         "mol_caption": "🟢 Teal = Cationic (Arg, Lys, His) | 🟠 Orange = Hydrophobic (Ala, Val, Leu, Ile, Phe, Trp, Met)",
+        "spinner_3d_loading": "Predicting 3D molecular coordinates (ESMFold AI / Heuristic)...",
+        "esm_fallback_warning": "⚠️ ESMFold API service unavailable/timeout (3s). Displaying idealized alpha-helix approximation model.",
         "table_title": "Passed Candidates Screening Database",
         "btn_csv": "📥 Download Full Data Table (.CSV)",
         "btn_pdf": "📄 Download Official Dossier (.PDF)",
@@ -683,9 +830,17 @@ I18N: Dict[str, Dict[str, str]] = {
 }
 
 
-def build_smart_label(row: Any) -> str:
+def build_smart_label(row: Any, max_id_len: Optional[int] = None) -> str:
+    """Builds a dense, informative candidate label for selectboxes with optional clean suffix truncation."""
     score = row.get("as35_score", 0.0)
     ai = row.get("aliphatic_index", 0.0)
     charge = row.get("charge_ph6", 0.0)
-    cid = row.get("id", "Unknown")
+    cid = str(row.get("id", "Unknown"))
+    if max_id_len is not None and len(cid) > max_id_len:
+        if "_" in cid and len(cid.split("_")[-1]) <= 6:
+            suffix = "_" + cid.split("_")[-1]
+            prefix_len = max(4, max_id_len - len(suffix) - 3)
+            cid = cid[:prefix_len] + "..." + suffix
+        else:
+            cid = cid[:max_id_len - 3] + "..."
     return f"[{score:.1f} | AI:{ai:.0f} | Q:{charge:+.1f}] {cid}"

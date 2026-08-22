@@ -303,23 +303,37 @@ def detect_sequence_type(sample_seqs: List[str]) -> str:
     return "protein"
 
 
-def extract_from_custom_fasta(
+def extract_from_custom_fasta_with_stats(
     content: str,
     organism_prefix: str = "Custom",
     min_len: int = 5,
     max_len: int = 100
-) -> Iterator[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
-    Extracts peptide candidates from an in-memory custom FASTA text (protein .faa or DNA .fna).
-    Automatically handles sequence type detection and six-frame sORF translation if DNA.
+    Extracts peptide candidates from custom FASTA text while gathering a comprehensive
+    diagnostic audit summary (total parsed, valid proteins, DNA sORFs, length skips, invalid chars).
     """
     records = list(parse_fasta_stream(content))
+    stats = {
+        "total_records": len(records),
+        "seq_type": "None",
+        "valid_proteins": 0,
+        "detected_dna": 0,
+        "sorfs_extracted": 0,
+        "skipped_length": 0,
+        "invalid_amino_acids": 0,
+        "total_candidates": 0
+    }
+    
     if not records:
-        return
+        return [], stats
 
     seq_type = detect_sequence_type([r[1] for r in records])
-
+    stats["seq_type"] = "Protein (CDS)" if seq_type == "protein" else "Genomic DNA (6-Frame)"
+    
+    peptides = []
     if seq_type == "protein":
+        stats["valid_proteins"] = len(records)
         for seq_id, raw_seq, desc in records:
             clean_seq = raw_seq.strip().upper()
             if clean_seq.endswith("*"):
@@ -327,22 +341,24 @@ def extract_from_custom_fasta(
 
             seq_len = len(clean_seq)
             if not (min_len <= seq_len <= max_len):
+                stats["skipped_length"] += 1
                 continue
 
             if set(clean_seq) - VALID_AA_SET:
+                stats["invalid_amino_acids"] += 1
                 continue
 
             clean_id = seq_id.replace("|", "_").replace(".", "_")
             formatted_id = f"{organism_prefix}_{clean_id}_{seq_len}aa"
-            yield {
+            peptides.append({
                 "id": formatted_id,
                 "sequence": clean_seq,
                 "source": "Custom_CDS",
                 "length": seq_len,
                 "description": desc
-            }
+            })
     else:
-        # Nucleotide -> 6-Frame sORF translation in-memory
+        stats["detected_dna"] = len(records)
         for seq_id, dna_seq, desc in records:
             fwd_dna_str = dna_seq.strip().upper()
             rev_dna_str = str(Seq(fwd_dna_str).reverse_complement())
@@ -364,29 +380,35 @@ def extract_from_custom_fasta(
                     elif codon in STOP_CODONS:
                         for s_idx, s_nt_pos in start_codon_positions:
                             orf_aa_len = codon_idx - s_idx
-                            if min_len <= orf_aa_len <= max_len:
-                                orf_nt = fwd_dna_str[s_nt_pos : nt_pos + 3]
-                                try:
-                                    translated_peptide = str(Seq(orf_nt).translate(table=11, cds=True))
-                                except Exception:
-                                    continue
-                                if not (set(translated_peptide) - VALID_AA_SET):
-                                    end_nt_pos = nt_pos + 3
-                                    clean_id = seq_id.replace("|", "_").replace(".", "_")
-                                    orf_id = (
-                                        f"{organism_prefix}_{clean_id}_sORF_F{frame_label}_"
-                                        f"{s_nt_pos + 1}_{end_nt_pos}_{orf_aa_len}aa"
-                                    )
-                                    yield {
-                                        "id": orf_id,
-                                        "sequence": translated_peptide,
-                                        "source": "Custom_sORF",
-                                        "length": orf_aa_len,
-                                        "frame": frame_label,
-                                        "strand": "forward",
-                                        "start": s_nt_pos + 1,
-                                        "end": end_nt_pos
-                                    }
+                            if not (min_len <= orf_aa_len <= max_len):
+                                stats["skipped_length"] += 1
+                                continue
+                            orf_nt = fwd_dna_str[s_nt_pos : nt_pos + 3]
+                            try:
+                                translated_peptide = str(Seq(orf_nt).translate(table=11, cds=True))
+                            except Exception:
+                                stats["invalid_amino_acids"] += 1
+                                continue
+                            if set(translated_peptide) - VALID_AA_SET:
+                                stats["invalid_amino_acids"] += 1
+                                continue
+                            end_nt_pos = nt_pos + 3
+                            clean_id = seq_id.replace("|", "_").replace(".", "_")
+                            orf_id = (
+                                f"{organism_prefix}_{clean_id}_sORF_F{frame_label}_"
+                                f"{s_nt_pos + 1}_{end_nt_pos}_{orf_aa_len}aa"
+                            )
+                            peptides.append({
+                                "id": orf_id,
+                                "sequence": translated_peptide,
+                                "source": "Custom_sORF",
+                                "length": orf_aa_len,
+                                "frame": frame_label,
+                                "strand": "forward",
+                                "start": s_nt_pos + 1,
+                                "end": end_nt_pos
+                            })
+                            stats["sorfs_extracted"] += 1
                         start_codon_positions = []
 
             # Reverse Frames (-1, -2, -3)
@@ -405,29 +427,58 @@ def extract_from_custom_fasta(
                     elif codon in STOP_CODONS:
                         for s_idx, s_nt_pos in start_codon_positions:
                             orf_aa_len = codon_idx - s_idx
-                            if min_len <= orf_aa_len <= max_len:
-                                orf_nt = rev_dna_str[s_nt_pos : nt_pos_rev + 3]
-                                try:
-                                    translated_peptide = str(Seq(orf_nt).translate(table=11, cds=True))
-                                except Exception:
-                                    continue
-                                if not (set(translated_peptide) - VALID_AA_SET):
-                                    orig_start = seq_len_nt - (nt_pos_rev + 3) + 1
-                                    orig_end = seq_len_nt - s_nt_pos
-                                    clean_id = seq_id.replace("|", "_").replace(".", "_")
-                                    orf_id = (
-                                        f"{organism_prefix}_{clean_id}_sORF_F{frame_label}_"
-                                        f"{orig_start}_{orig_end}_{orf_aa_len}aa"
-                                    )
-                                    yield {
-                                        "id": orf_id,
-                                        "sequence": translated_peptide,
-                                        "source": "Custom_sORF",
-                                        "length": orf_aa_len,
-                                        "frame": frame_label,
-                                        "strand": "reverse",
-                                        "start": orig_start,
-                                        "end": orig_end
-                                    }
+                            if not (min_len <= orf_aa_len <= max_len):
+                                stats["skipped_length"] += 1
+                                continue
+                            orf_nt = rev_dna_str[s_nt_pos : nt_pos_rev + 3]
+                            try:
+                                translated_peptide = str(Seq(orf_nt).translate(table=11, cds=True))
+                            except Exception:
+                                stats["invalid_amino_acids"] += 1
+                                continue
+                            if set(translated_peptide) - VALID_AA_SET:
+                                stats["invalid_amino_acids"] += 1
+                                continue
+                            orig_start = seq_len_nt - (nt_pos_rev + 3) + 1
+                            orig_end = seq_len_nt - s_nt_pos
+                            clean_id = seq_id.replace("|", "_").replace(".", "_")
+                            orf_id = (
+                                f"{organism_prefix}_{clean_id}_sORF_F{frame_label}_"
+                                f"{orig_start}_{orig_end}_{orf_aa_len}aa"
+                            )
+                            peptides.append({
+                                "id": orf_id,
+                                "sequence": translated_peptide,
+                                "source": "Custom_sORF",
+                                "length": orf_aa_len,
+                                "frame": frame_label,
+                                "strand": "reverse",
+                                "start": orig_start,
+                                "end": orig_end
+                            })
+                            stats["sorfs_extracted"] += 1
                         start_codon_positions = []
+
+    stats["total_candidates"] = len(peptides)
+    return peptides, stats
+
+
+def extract_from_custom_fasta(
+    content: str,
+    organism_prefix: str = "Custom",
+    min_len: int = 5,
+    max_len: int = 100
+) -> Iterator[Dict[str, Any]]:
+    """
+    Extracts peptide candidates from an in-memory custom FASTA text (protein .faa or DNA .fna).
+    Automatically handles sequence type detection and six-frame sORF translation if DNA.
+    """
+    peptides, _ = extract_from_custom_fasta_with_stats(
+        content=content,
+        organism_prefix=organism_prefix,
+        min_len=min_len,
+        max_len=max_len
+    )
+    for p in peptides:
+        yield p
 

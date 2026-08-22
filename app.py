@@ -1,7 +1,7 @@
 import html
 import io
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple, Union, Set
 
 import numpy as np
 import pandas as pd
@@ -34,7 +34,7 @@ from src.filters import (
     PKA_LEHNINGER,
     HYDROPHOBIC_RESIDUES
 )
-from src.extractor import extract_from_custom_fasta
+from src.extractor import extract_from_custom_fasta, extract_from_custom_fasta_with_stats
 from engine import run_pipeline, NISIN_A_SEQUENCE
 
 def _safe(value: Any, max_len: int = 100) -> str:
@@ -69,50 +69,60 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # ==============================================================================
 
 @st.cache_data(show_spinner=False)
-def load_screening_data() -> pd.DataFrame:
-    target = Path("data/processed/pls47_candidates.parquet")
+def load_screening_data(spinner_msg: str = "Initializing bio-screening pipeline... (First run only)") -> pd.DataFrame:
+    target_parquet = Path("data/processed/pls47_candidates.parquet")
+    target_csv = Path("data/processed/pls47_candidates.csv")
     
-    # If the user is running the app for the first time and hasn't run the backend
-    if not target.exists():
-        with st.spinner("Initializing bio-screening pipeline... (First run only)"):
-            df_all, _ = run_pipeline(
-                bioproject="PRJDB8096",
-                prefix="pls47",
-                mode="all",
-                preset="tropical",
-                output_parquet=str(target)
-            )
-            return df_all
+    # 1. Fast Parquet load
+    if target_parquet.exists():
+        df = pd.read_parquet(target_parquet, engine="pyarrow")
+        if "extremopreserve_score" in df.columns:
+            df = df.rename(columns={"extremopreserve_score": "as35_score"})
+        return df
 
-    df = pd.read_parquet(target, engine="pyarrow")
-    
-    # Backward compatibility for old schemas
-    if "extremopreserve_score" in df.columns:
-        df = df.rename(columns={"extremopreserve_score": "as35_score"})
+    # 2. CSV fallback
+    if target_csv.exists():
+        df = pd.read_csv(target_csv)
+        if "extremopreserve_score" in df.columns:
+            df = df.rename(columns={"extremopreserve_score": "as35_score"})
+        try:
+            df.to_parquet(target_parquet, index=False)
+        except Exception:
+            pass
+        return df
 
-    return df
+    # 3. Full pipeline execution on cold start with informative status
+    with st.spinner(spinner_msg):
+        df_all, _ = run_pipeline(
+            bioproject="PRJDB8096",
+            prefix="pls47",
+            mode="all",
+            preset="tropical",
+            output_parquet=str(target_parquet)
+        )
+        return df_all
 
 @st.cache_data(show_spinner=False)
-def process_custom_fasta_data(fasta_content: str, filename: str = "custom.fasta") -> pd.DataFrame:
+def process_custom_fasta_data(fasta_content: str, filename: str = "custom.fasta") -> Tuple[pd.DataFrame, Dict[str, Any]]:
     """
     Extracts and evaluates peptide candidates in-memory from user-provided FASTA text.
     Handles auto-detection of protein (.faa) vs DNA (.fna via 6-frame translation).
-    Returns unified 17-column DataFrame schema matching load_screening_data.
+    Returns (DataFrame, audit_stats_dictionary).
     """
     if not fasta_content or not fasta_content.strip():
-        return pd.DataFrame()
+        return pd.DataFrame(), {}
 
     prefix = filename[:10].replace(" ", "_").replace(".", "_")
-    extracted = list(extract_from_custom_fasta(fasta_content, organism_prefix=prefix))
+    extracted, stats = extract_from_custom_fasta_with_stats(fasta_content, organism_prefix=prefix)
     if not extracted:
-        return pd.DataFrame()
+        return pd.DataFrame(), stats
 
     peptides = [(c["id"], c["sequence"]) for c in extracted]
     evaluated = evaluate_peptide_batch(peptides, FilterConfig.tropical_preset())
     
     df_custom = pd.DataFrame(evaluated)
     df_custom["source"] = [c["source"] for c in extracted]
-    return df_custom
+    return df_custom, stats
 
 # ==============================================================================
 # 3. MAIN APPLICATION CONTROLLER
@@ -125,15 +135,27 @@ def main():
     lang_choice = st.sidebar.radio(
         "🌐 Language / Bahasa:",
         ["🇮🇩 Bahasa Indonesia", "🇬🇧 English"],
-        index=0
+        index=0,
+        key="global_lang_choice"
     )
     lang_key = "id" if "Indonesia" in lang_choice else "en"
     t = I18N[lang_key]
 
     st.sidebar.title(f"🧬 {t['sidebar_title']}")
     
+    # 1. Genomic Data Source Selector (Invariant Internal Keys to Prevent Language Desync)
+    st.sidebar.subheader(t["src_selector_title"])
+    src_mode = st.sidebar.radio(
+        t["src_selector_title"],
+        options=["benchmark", "custom"],
+        format_func=lambda m: t["src_default_label"] if m == "benchmark" else t["src_custom_label"],
+        index=0 if st.session_state.get("data_source_mode") != "custom" else 1,
+        key="data_source_mode",
+        label_visibility="collapsed"
+    )
+    is_custom_source = (src_mode == "custom")
+
     # Dynamic Subtitle based on active dataset
-    is_custom_source = st.session_state.get("data_source_radio") == t["src_custom_label"]
     custom_active_name = st.session_state.get("custom_org_name", "").strip() or st.session_state.get("custom_active_filename", t["custom_data_name"])
     
     if is_custom_source and custom_active_name:
@@ -150,21 +172,11 @@ def main():
     )
     st.sidebar.divider()
 
-    # 1. Genomic Data Source Selector
-    st.sidebar.subheader(t["src_selector_title"])
-    src_choice = st.sidebar.radio(
-        "Pilihan Sumber Data:",
-        [t["src_default_label"], t["src_custom_label"]],
-        index=0,
-        key="data_source_radio",
-        label_visibility="collapsed"
-    )
-
     df_raw = None
     active_dataset_name = "PLS47_PRJDB8096"
 
-    if src_choice == t["src_default_label"]:
-        df_raw = load_screening_data()
+    if not is_custom_source:
+        df_raw = load_screening_data(t["first_run_spinner"])
         active_dataset_name = "Geobacillus thermocatenulatus PLS47 (NCBI PRJDB8096)"
     else:
         # Custom FASTA Input Tabs
@@ -216,11 +228,30 @@ def main():
             with st.sidebar:
                 with st.spinner(t["spinner_process"]):
                     dfs = []
+                    aggregated_stats = {
+                        "total_records": 0,
+                        "seq_type": "None",
+                        "valid_proteins": 0,
+                        "detected_dna": 0,
+                        "sorfs_extracted": 0,
+                        "skipped_length": 0,
+                        "invalid_amino_acids": 0,
+                        "total_candidates": 0
+                    }
                     for fdata in custom_files_data:
-                        df_f = process_custom_fasta_data(fdata["content"], filename=fdata["name"])
+                        df_f, f_stats = process_custom_fasta_data(fdata["content"], filename=fdata["name"])
                         if not df_f.empty:
                             dfs.append(df_f)
-                    
+                        if f_stats:
+                            aggregated_stats["total_records"] += f_stats.get("total_records", 0)
+                            aggregated_stats["seq_type"] = f_stats.get("seq_type", aggregated_stats["seq_type"])
+                            aggregated_stats["valid_proteins"] += f_stats.get("valid_proteins", 0)
+                            aggregated_stats["detected_dna"] += f_stats.get("detected_dna", 0)
+                            aggregated_stats["sorfs_extracted"] += f_stats.get("sorfs_extracted", 0)
+                            aggregated_stats["skipped_length"] += f_stats.get("skipped_length", 0)
+                            aggregated_stats["invalid_amino_acids"] += f_stats.get("invalid_amino_acids", 0)
+                            aggregated_stats["total_candidates"] += f_stats.get("total_candidates", 0)
+
                     if dfs:
                         df_custom = pd.concat(dfs, ignore_index=True)
                     else:
@@ -231,12 +262,35 @@ def main():
                 active_dataset_name = _safe(custom_name_display)
                 disp_name = _safe(custom_name_display, 27) + ("..." if len(custom_name_display) > 27 else "")
                 st.sidebar.success(t["custom_success"].format(n=len(df_custom), name=disp_name))
+                
+                # Detailed Ingestion Audit Transparency Card
+                st.sidebar.markdown(
+                    f"""
+                    <div class="audit-summary-card">
+                        <div class="audit-summary-title">
+                            <span>📋 {t['audit_card_title']}</span>
+                            <span style="color: #0E8388; font-weight: 800;">{aggregated_stats['total_candidates']} Final</span>
+                        </div>
+                        <table class="audit-table">
+                            <tr><td>{t['audit_stat_records']}</td><td>{aggregated_stats['total_records']:,}</td></tr>
+                            <tr><td>{t['audit_stat_type']}</td><td>{aggregated_stats['seq_type']}</td></tr>
+                            <tr><td>{t['audit_stat_valid_prot']}</td><td>{aggregated_stats['valid_proteins']:,}</td></tr>
+                            <tr><td>{t['audit_stat_detected_dna']}</td><td>{aggregated_stats['detected_dna']:,}</td></tr>
+                            <tr><td>{t['audit_stat_sorfs']}</td><td>{aggregated_stats['sorfs_extracted']:,}</td></tr>
+                            <tr><td>{t['audit_stat_skipped_len']}</td><td>{aggregated_stats['skipped_length']:,}</td></tr>
+                            <tr><td>{t['audit_stat_invalid_aa']}</td><td>{aggregated_stats['invalid_amino_acids']:,}</td></tr>
+                            <tr style="border-top: 1.5px solid #CBD5E1;"><td><b>{t['audit_stat_forwarded']}</b></td><td style="color: #0E8388; font-size: 13px;"><b>{aggregated_stats['total_candidates']:,}</b></td></tr>
+                        </table>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
                 st.sidebar.warning(t["custom_empty"])
-                df_raw = load_screening_data()
+                df_raw = load_screening_data(t["first_run_spinner"])
         else:
             st.sidebar.info(t["info_upload_paste"])
-            df_raw = load_screening_data()
+            df_raw = load_screening_data(t["first_run_spinner"])
         
         st.sidebar.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
@@ -253,32 +307,64 @@ def main():
         st.session_state['custom_org_name'] = _safe(custom_organism_name)
         st.session_state['custom_env'] = _safe(custom_environment)
 
-    # 2. Collapsible Filter Expander (Ergonomic Friction Reduction)
+    # 2. Collapsible Filter Expander (Ergonomic Friction Reduction with State Reset)
+    # Initialize slider session state keys if not already initialized
+    if "slider_score" not in st.session_state:
+        st.session_state["slider_score"] = 60.0
+    if "slider_charge" not in st.session_state:
+        st.session_state["slider_charge"] = 2.0
+    if "slider_ai" not in st.session_state:
+        st.session_state["slider_ai"] = 60.0
+    if "slider_ii" not in st.session_state:
+        st.session_state["slider_ii"] = 40.0
+    if "slider_hydro" not in st.session_state:
+        st.session_state["slider_hydro"] = (25.0, 60.0)
+    if "slider_boman" not in st.session_state:
+        st.session_state["slider_boman"] = (0.0, 2.5)
+
+    def apply_strict_preset():
+        st.session_state["slider_score"] = 60.0
+        st.session_state["slider_charge"] = 2.0
+        st.session_state["slider_ai"] = 60.0
+        st.session_state["slider_ii"] = 40.0
+        st.session_state["slider_hydro"] = (25.0, 60.0)
+        st.session_state["slider_boman"] = (0.0, 2.5)
+
+    def apply_permissive_preset():
+        st.session_state["slider_score"] = 30.0
+        st.session_state["slider_charge"] = 1.0
+        st.session_state["slider_ai"] = 35.0
+        st.session_state["slider_ii"] = 70.0
+        st.session_state["slider_hydro"] = (20.0, 70.0)
+        st.session_state["slider_boman"] = (-1.0, 4.0)
+
     with st.sidebar.expander(t["filter_expander_title"], expanded=False):
         st.caption(t["filter_help_note"])
-        preset_label = st.radio(
-            t["sidebar_preset"],
-            [t["preset_strict"], t["preset_permissive"]],
-            index=0
-        )
+        
+        # Preset Action Buttons
+        p_col1, p_col2 = st.columns(2)
+        with p_col1:
+            if st.button(t["preset_btn_strict"], use_container_width=True, key="btn_preset_strict"):
+                apply_strict_preset()
+                st.rerun()
+        with p_col2:
+            if st.button(t["preset_btn_permissive"], use_container_width=True, key="btn_preset_permissive"):
+                apply_permissive_preset()
+                st.rerun()
 
-        if preset_label == t["preset_strict"]:
-            default_min_score = 60.0
-            default_min_charge = 2.0
-            default_min_ai = 60.0
-            default_max_ii = 40.0
-        else:
-            default_min_score = 30.0
-            default_min_charge = 1.0
-            default_min_ai = 35.0
-            default_max_ii = 70.0
+        st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+        if st.button(t["preset_btn_reset"], use_container_width=True, key="btn_preset_reset"):
+            apply_strict_preset()
+            st.rerun()
 
-        slider_score = st.slider(t["slider_score"], 0.0, 100.0, default_min_score, 1.0)
-        slider_charge = st.slider(t["slider_charge"], 0.0, 10.0, default_min_charge, 0.5)
-        slider_ai = st.slider(t["slider_ai"], 0.0, 160.0, default_min_ai, 5.0)
-        slider_ii = st.slider(t["slider_ii"], 10.0, 100.0, default_max_ii, 5.0)
-        slider_hydro = st.slider(t["slider_hydro"], 0.0, 100.0, (25.0, 60.0), 1.0)
-        slider_boman = st.slider(t["slider_boman"], -2.0, 8.0, (0.0, 2.5), 0.1)
+        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
+        slider_score = st.slider(t["slider_score"], 0.0, 100.0, step=1.0, key="slider_score")
+        slider_charge = st.slider(t["slider_charge"], 0.0, 10.0, step=0.5, key="slider_charge")
+        slider_ai = st.slider(t["slider_ai"], 0.0, 160.0, step=5.0, key="slider_ai")
+        slider_ii = st.slider(t["slider_ii"], 10.0, 100.0, step=5.0, key="slider_ii")
+        slider_hydro = st.slider(t["slider_hydro"], 0.0, 100.0, step=1.0, key="slider_hydro")
+        slider_boman = st.slider(t["slider_boman"], -2.0, 8.0, step=0.1, key="slider_boman")
 
         available_sources = list(df_raw["source"].unique()) if "source" in df_raw.columns and len(df_raw) > 0 else ["CDS", "sORF"]
         source_filter = st.multiselect(t["origin_filter"], available_sources, default=available_sources)
@@ -318,7 +404,11 @@ def main():
     elif sort_choice == t["sort_opt_len_asc"]:
         filtered_df = filtered_df.sort_values(by="length", ascending=True).reset_index(drop=True)
 
-    search_query = st.sidebar.text_input(t["search_label"], placeholder=t["search_placeholder"]).strip()
+    search_query = st.sidebar.text_input(
+        t["search_label"],
+        placeholder=t["search_placeholder"],
+        help=t["search_help"]
+    ).strip()
 
     search_filtered_df = filtered_df
     if search_query and len(filtered_df) > 0:
@@ -344,12 +434,22 @@ def main():
         
         search_filtered_df = search_filtered_df[id_match | seq_match | label_match | rank_match].reset_index(drop=True)
 
+    MAX_SELECTOR_LIMIT = 100
     if len(search_filtered_df) > 0:
-        if search_query:
-            st.sidebar.caption(t["search_match_info"].format(n=len(search_filtered_df)))
+        total_matched = len(search_filtered_df)
+        if total_matched > MAX_SELECTOR_LIMIT:
+            if search_query:
+                st.sidebar.caption(t["search_match_window"].format(limit=MAX_SELECTOR_LIMIT, total=f"{total_matched:,}"))
+            else:
+                st.sidebar.caption(t["selector_window_info"].format(limit=MAX_SELECTOR_LIMIT, total=f"{total_matched:,}"))
+            display_pool_df = search_filtered_df.iloc[:MAX_SELECTOR_LIMIT].reset_index(drop=True)
+        else:
+            if search_query:
+                st.sidebar.caption(t["search_match_info"].format(n=total_matched))
+            display_pool_df = search_filtered_df
 
-        candidate_indices = list(range(len(search_filtered_df)))
-        display_options = [build_smart_label(row) for _, row in search_filtered_df.iterrows()]
+        candidate_indices = list(range(len(display_pool_df)))
+        display_options = [build_smart_label(row, max_id_len=26) for _, row in display_pool_df.iterrows()]
 
         selected_idx = st.sidebar.selectbox(
             t["select_cand"],
@@ -357,7 +457,7 @@ def main():
             format_func=lambda i: display_options[i],
             index=0
         )
-        selected_candidate = search_filtered_df.iloc[selected_idx]
+        selected_candidate = display_pool_df.iloc[selected_idx]
         selected_cand_id = selected_candidate["id"]
     else:
         if search_query:
@@ -396,7 +496,7 @@ def main():
     pill_style = "background: rgba(14, 131, 136, 0.08); border: 1px solid rgba(14, 131, 136, 0.35); padding: 4px 12px; border-radius: 20px; font-size: 12.5px; font-weight: 600; color: #0E8388;"
     pills_html = f"""
     <div style='display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; margin-bottom: 22px; align-items: center;'>
-        <span style='font-size: 13px; font-weight: 700; color: #475569; margin-right: 4px;'>Active Filters:</span>
+        <span style='font-size: 13px; font-weight: 700; color: #475569; margin-right: 4px;'>{t['active_filters_label']}</span>
         <span style='{pill_style}'>AS-35 ≥ {slider_score}</span>
         <span style='{pill_style}'>Charge ≥ {slider_charge}</span>
         <span style='{pill_style}'>AI ≥ {slider_ai}</span>
@@ -509,7 +609,7 @@ def main():
                     orientation='h',
                     marker=dict(color="#D97706", line=dict(width=1, color="rgba(255,255,255,0.4)")),
                     customdata=custom_metadata,
-                    hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_score"] + f": <b>+%{x:.1f}%</b> vs Nisin A ({score_str}: %{{customdata[1]:.1f}})<extra></extra>"
+                    hovertemplate="<b>ID: %{customdata[0]}</b><br>" + t["delta_trace_score"] + ": <b>+%{x:.1f}%</b> vs Nisin A (" + score_str + ": %{customdata[1]:.1f})<extra></extra>"
                 ))
 
                 # Baseline Zero Line for Nisin A
@@ -572,28 +672,28 @@ def main():
                                 survivors += 1
                         return survivors
 
-                    # Proper sequential accumulation including length & validity
+                    # Methodological sequential accumulation mirroring filters.py exact evaluation order:
                     funnel_nums = [
                         total_screened,
                         count_cumulative("Invalid sequence", "Length out of bounds"),
                         count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0"),
-                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index"),
-                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index"),
-                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point"),
-                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio"),
-                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Aliphatic Index", "Instability Index", "Isoelectric Point", "Hydrophobic Ratio", "Boman Index"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Isoelectric Point"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Isoelectric Point", "Aliphatic Index"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Isoelectric Point", "Aliphatic Index", "Instability Index"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Isoelectric Point", "Aliphatic Index", "Instability Index", "Hydrophobic Ratio"),
+                        count_cumulative("Invalid sequence", "Length out of bounds", "Charge @ pH 6.0", "Isoelectric Point", "Aliphatic Index", "Instability Index", "Hydrophobic Ratio", "Boman Index"),
                         int((df_raw["passed_all_filters"] == True).sum())
                     ]
                     
                     funnel_stages = [
                         t["funnel_crit_total"],
                         t["funnel_crit_valid"],
-                        t["funnel_crit_charge"],
-                        t["funnel_crit_ai"],
-                        t["funnel_crit_ii"],
-                        t["funnel_crit_pi"],
-                        t["funnel_crit_hydro"],
-                        t["funnel_crit_boman"],
+                        t["funnel_crit_charge"].format(val=2.0),
+                        t["funnel_crit_pi"].format(val=8.4),
+                        t["funnel_crit_ai"].format(val=60.0),
+                        t["funnel_crit_ii"].format(val=40.0),
+                        t["funnel_crit_hydro"].format(min_val=28.0, max_val=55.0),
+                        t["funnel_crit_boman"].format(min_val=0.0, max_val=2.5),
                         t["funnel_crit_passed"]
                     ]
                     
@@ -742,14 +842,85 @@ def main():
             fig_titr.update_layout(**titr_layout)
             st.plotly_chart(fig_titr, use_container_width=True, config={'displayModeBar': False})
 
-        # 4. 3D Molecular Viewport
+            # Exact Food Matrix Reference Table
+            c_ph3 = calculate_net_charge(cand_seq, 3.0)
+            n_ph3 = calculate_net_charge(NISIN_A_SEQUENCE, 3.0)
+            c_ph4 = calculate_net_charge(cand_seq, 4.0)
+            n_ph4 = calculate_net_charge(NISIN_A_SEQUENCE, 4.0)
+            c_ph6 = calculate_net_charge(cand_seq, 6.0)
+            n_ph6 = calculate_net_charge(NISIN_A_SEQUENCE, 6.0)
+            c_ph7 = calculate_net_charge(cand_seq, 7.4)
+            n_ph7 = calculate_net_charge(NISIN_A_SEQUENCE, 7.4)
+            cand_pi = float(selected_candidate.get('isoelectric_point', calculate_isoelectric_point(cand_seq)))
+            nisin_pi = float(nisin_res.get('isoelectric_point', 8.48))
+
+            st.markdown(
+                f"""
+                <div class="titr-matrix-card">
+                    <div class="titr-matrix-title">
+                        <span>📋 {t['titr_table_title']}</span>
+                    </div>
+                    <table class="titr-matrix-table">
+                        <thead>
+                            <tr>
+                                <th>{t['titr_table_header_matrix']}</th>
+                                <th style="text-align:right;">{t['titr_table_header_ph']}</th>
+                                <th style="text-align:right;color:#0E8388;">{t['titr_table_header_target']}</th>
+                                <th style="text-align:right;color:#EF4444;">{t['titr_table_header_nisin']}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>{t['titr_row_ph3']}</td>
+                                <td>3.0</td>
+                                <td style="font-weight:700;color:#0E8388;">{c_ph3:+.2f}</td>
+                                <td style="color:#64748B;">{n_ph3:+.2f}</td>
+                            </tr>
+                            <tr>
+                                <td>{t['titr_row_ph4']}</td>
+                                <td>4.0</td>
+                                <td style="font-weight:700;color:#0E8388;">{c_ph4:+.2f}</td>
+                                <td style="color:#64748B;">{n_ph4:+.2f}</td>
+                            </tr>
+                            <tr style="background:rgba(14, 131, 136, 0.05);">
+                                <td><b>{t['titr_row_ph6']}</b></td>
+                                <td><b>6.0</b></td>
+                                <td style="font-weight:800;color:#0E8388;">{c_ph6:+.2f}</td>
+                                <td style="font-weight:600;color:#64748B;">{n_ph6:+.2f}</td>
+                            </tr>
+                            <tr>
+                                <td>{t['titr_row_ph7']}</td>
+                                <td>7.4</td>
+                                <td style="font-weight:700;color:#0E8388;">{c_ph7:+.2f}</td>
+                                <td style="color:#64748B;">{n_ph7:+.2f}</td>
+                            </tr>
+                            <tr style="border-top:1.5px solid #CBD5E1;">
+                                <td><b>{t['titr_row_pi']}</b></td>
+                                <td style="font-family:var(--font-sans);font-weight:600;">pI</td>
+                                <td style="font-weight:800;color:#0E8388;">pI = {cand_pi:.2f}</td>
+                                <td style="color:#64748B;">pI = {nisin_pi:.2f}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        # 4. 3D Molecular Viewport with Explicit Loading State & Fallback Alert
         with col_3d:
-            pdb_str, model_source = fetch_peptide_3d_pdb(selected_candidate['sequence'])
+            with st.spinner(t["spinner_3d_loading"]):
+                pdb_str, model_source = fetch_peptide_3d_pdb(selected_candidate['sequence'])
+
             badge_source = f"Model: {model_source}"
             st.markdown(
                 render_chart_header(t["panel_mol_tag"], t["mol_title"], badge_source),
                 unsafe_allow_html=True
             )
+            
+            if "Fallback" in model_source or "Idealized" in model_source:
+                st.info(t["esm_fallback_warning"])
+
             html_3d = build_3dmol_html(pdb_str, height=330, primary_color="#0E8388", hydrophobic_color="#D97706")
             components.html(html_3d, height=340)
             st.caption(t['mol_caption'])

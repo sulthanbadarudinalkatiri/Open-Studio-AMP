@@ -119,3 +119,9 @@ class TestSmartLabelFormatting:
         label = build_smart_label(sample_candidates_df.iloc[0])
         assert "[85.4 | AI:120 | Q:+3.2]" in label
         assert "PLS47_sORF_F+1_100_200_fwd_33aa" in label
+
+    def test_build_smart_label_truncation(self, sample_candidates_df):
+        label = build_smart_label(sample_candidates_df.iloc[0], max_id_len=22)
+        assert "[85.4 | AI:120 | Q:+3.2]" in label
+        assert "..." in label
+        assert len(label.split("] ")[1]) <= 24

@@ -92,6 +92,7 @@ def build_3dmol_html(
     Constructs clean, self-contained HTML for 3Dmol.js rendering with amphipathic coloring.
     - Cationic (Arg, Lys, His) highlighted in Primary Brand Color (Tosca/Teal)
     - Hydrophobic (Ala, Val, Leu, Ile, Phe, Trp, Met) highlighted in Amber/Orange
+    Includes graceful CDN failure detection and zero-XSS JSON escaping.
     """
     import json
     pdb_clean = json.dumps(pdb_data).replace("<", "\\u003c")
@@ -100,17 +101,25 @@ def build_3dmol_html(
     <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
     <script>
         let element = document.getElementById("container-3d");
-        let viewer = $3Dmol.createViewer(element, {{backgroundColor: "white"}});
-        let pdbData = {pdb_clean};
-        viewer.addModel(pdbData, "pdb");
-        
-        viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum', thickness: 0.4}}}});
-        viewer.setStyle({{resn: ['ARG', 'LYS', 'HIS']}}, {{cartoon: {{color: '{primary_color}'}}, stick: {{colorscheme: 'cyanCarbon', radius: 0.15}}}});
-        viewer.setStyle({{resn: ['ALA', 'VAL', 'LEU', 'ILE', 'PHE', 'TRP', 'MET']}}, {{cartoon: {{color: '{hydrophobic_color}'}}}});
+        if (typeof $3Dmol === 'undefined') {{
+            element.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:#64748B;font-family:sans-serif;padding:20px;text-align:center;"><div style="font-size:26px;margin-bottom:6px;">🧬</div><b style="color:#0F172A;font-size:13px;">3D Viewer CDN Offline</b><p style="font-size:11.5px;color:#64748B;margin-top:4px;line-height:1.4;">Pustaka CDN 3Dmol.js tidak dapat diakses (periksa koneksi internet Anda). Koordinat PDB tetap tersimpan aman.</p></div>';
+        }} else {{
+            try {{
+                let viewer = $3Dmol.createViewer(element, {{backgroundColor: "white"}});
+                let pdbData = {pdb_clean};
+                viewer.addModel(pdbData, "pdb");
+                
+                viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum', thickness: 0.4}}}});
+                viewer.setStyle({{resn: ['ARG', 'LYS', 'HIS']}}, {{cartoon: {{color: '{primary_color}'}}, stick: {{colorscheme: 'cyanCarbon', radius: 0.15}}}});
+                viewer.setStyle({{resn: ['ALA', 'VAL', 'LEU', 'ILE', 'PHE', 'TRP', 'MET']}}, {{cartoon: {{color: '{hydrophobic_color}'}}}});
 
-        viewer.zoomTo();
-        viewer.render();
-        viewer.spin("y", 0.6);
+                viewer.zoomTo();
+                viewer.render();
+                viewer.spin("y", 0.6);
+            }} catch (e) {{
+                element.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#64748B;font-size:12px;">Visualisasi 3D tidak dapat diinisialisasi.</div>';
+            }}
+        }}
     </script>
     """
     return html_code
